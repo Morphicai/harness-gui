@@ -40,6 +40,97 @@ const form = await ui.form({
 | **SDK** | any Node program — CLI, service, script | `npm i harness-gui` |
 | **MCP** | agents / LLM hosts (Claude Code, Cursor, …) | `harness-gui-mcp`, stdio transport |
 
+Agents also get a playbook — mostly about *when not to ask*, since an agent that
+confirms every step is worse than one that just does the work:
+
+```bash
+npx harness-gui-skill install            # → ~/.claude/skills/harness-gui/
+npx harness-gui-skill mcp --claude-code  # → the `claude mcp add` command
+```
+
+## A scenario
+
+An agent is cleaning up a `customers` table. It has found 12 stale rows and is
+about to drop them. This is the moment the whole library exists for.
+
+**1. It asks — and attaches what it is asking about.**
+
+```ts
+gui_confirm({
+  title: 'Drop 12 rows from customers?',
+  message: 'Soft delete — recoverable from row history for 30 days. '
+         + 'Two rows have open invoices.',
+  table: {
+    columns: ['id', 'name', 'last_seen', 'open_invoices'],
+    rows: [[41, 'ACME Corp', '2024-03-02', 2], [42, 'Globex', '2023-11-18', 0]],
+  },
+  danger: true,
+})
+```
+
+"Delete 12 rows" and "delete *these* 12 rows" are different decisions, and only
+one of them is informed. Passing the payload is not decoration.
+
+**2. A person sees it — on a surface, not in a transcript.**
+
+```
+┌─ Drop 12 rows from customers? ──────────────────────────────┐
+│                                                             │
+│  Soft delete — recoverable from row history for 30 days.     │
+│  Two rows have open invoices.                                │
+│                                                             │
+│   id   name        last_seen     open_invoices               │
+│   41   ACME Corp   2024-03-02                2               │
+│   42   Globex      2023-11-18                0               │
+│   …                                                          │
+│                                                             │
+│                                    [ 取消 ]   [ 确认 ]       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+Terminal, browser tab, or native window — same content, chosen by whichever
+channel can currently reach them.
+
+> The title and body come from the caller, so they read in whatever language you
+> wrote them in. **The library's own chrome is currently Chinese-only** — buttons,
+> validation messages, the terminal prompts. See
+> [issues](https://github.com/Morphicai/harness-gui/issues) if that blocks you;
+> it is ~20 strings across `channels/web/page.ts` and `channels/tty.ts`.
+
+**3. They notice the open invoices and decline.**
+
+```ts
+→ { action: 'cancel', channel: 'web' }
+```
+
+**4. The agent stops.**
+
+It reports that the deletion was declined and why it asked. What it must *not*
+do is go find a `DELETE FROM` that achieves the same thing — the refusal was
+about the outcome, not the syntax. That rule is written into the agent playbook,
+because it is the failure mode that matters.
+
+Had nobody been at the keyboard, the answer would have been `timeout` rather
+than `cancel` — "nobody is there" and "the answer is no" are different facts, and
+the agent reports which one it got.
+
+### The same scenario, one step earlier
+
+The migration needed a 2FA code to connect. Through the SDK:
+
+```ts
+const code = await askText({
+  title: 'Production database',
+  label: 'Verification code',
+  secret: true,
+})
+if (!code) return   // cancelled, timed out, or nobody reachable
+```
+
+`code` goes to your process. It never enters a model's context, and it is not in
+this transcript — which is why `gui_form` over MCP refuses `password` fields
+outright rather than quietly downgrading them to a text box.
+
 ## Architecture
 
 ```

@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "node16",
+    "moduleResolution": "node16",
+    "noEmit": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    /* bin/ 是纯 JS，但用例是 TS 且 import 它 —— allowJs 让 TS 能跟进去推导，
+       checkJs 顺便把 JS 也检查了。这个包没有构建步骤，所以这是它唯一的静态检查。 */
+    "allowJs": true,
+    "checkJs": true,
+    "resolveJsonModule": true,
+    "lib": ["es2022"],
+    /* 用例还 import 了 ../../mcp/src/tools.ts 做一致性核对，
+       那份源码里 harness-gui 得能解析到 core 的源码。 */
+    "paths": { "harness-gui": ["../core/src/index.ts"] },
+    "rootDir": ".."
+  },
+  "include": ["bin/**/*", "test/**/*"],
+  "exclude": ["node_modules"]
+}

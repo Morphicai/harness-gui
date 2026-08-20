@@ -1,0 +1,20 @@
+{
+  "name": "harness-gui-skill",
+  "version": "0.0.0",
+  "description": "Agent skill for harness-gui — teaches an agent when and how to reach the human. Install into Claude Code / Cursor / Kiro via `npx harness-gui-skill install`.",
+  "license": "MIT",
+  "type": "module",
+  "main": "bin/api.js",
+  "bin": { "harness-gui-skill": "bin/cli.js" },
+  "exports": {
+    ".": "./bin/api.js",
+    "./SKILL.md": "./skill/SKILL.md",
+    "./skill/*": "./skill/*"
+  },
+  "files": ["bin", "skill", "README.md", "LICENSE"],
+  "keywords": ["harness-gui", "mcp", "agent", "skill", "claude-code", "cursor", "human-in-the-loop", "approval"],
+  "repository": { "type": "git", "url": "git+https://github.com/Morphicai/harness-gui.git", "directory": "packages/skill" },
+  "homepage": "https://github.com/Morphicai/harness-gui#readme",
+  "publishConfig": { "access": "public" },
+  "engines": { "node": ">=18" }
+}

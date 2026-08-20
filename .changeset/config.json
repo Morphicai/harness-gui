@@ -6,6 +6,12 @@
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
   "fixed": [],
-  "linked": [["harness-gui", "harness-gui-mcp"]],
+  "linked": [
+    [
+      "harness-gui",
+      "harness-gui-mcp",
+      "harness-gui-skill"
+    ]
+  ],
   "ignore": []
 }

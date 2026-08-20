@@ -7,7 +7,7 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
-    "typecheck": "tsc -p packages/core/tsconfig.typecheck.json && tsc -p packages/mcp/tsconfig.typecheck.json",
+    "typecheck": "tsc -p packages/core/tsconfig.typecheck.json && tsc -p packages/mcp/tsconfig.typecheck.json && tsc -p packages/skill/tsconfig.typecheck.json",
     "test": "vitest run",
     "changeset": "changeset",
     "version-packages": "changeset version && node scripts/sync-shell-versions.mjs",
