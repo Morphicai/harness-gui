@@ -154,9 +154,15 @@ if [ ${#SKIPPED[@]} -gt 0 ]; then
     echo "skipped (${#SKIPPED[@]}):"; for n in "${SKIPPED[@]}"; do echo "  ✗ $n"; done
 fi
 
-# 「什么都没发」但「所有包都已是 registry 上的版本」不算失败（文档类提交，
-# changesets 正确地没产生版本变化）。只有真的有 skip 且一个都没成才失败。
-if [ ${#PUBLISHED[@]} -eq 0 ] && [ ${#SKIPPED[@]} -gt 0 ]; then
-    echo "::error::一个包都没发出去，且有 ${#SKIPPED[@]} 个被跳过"
+# 只要有任何一个包没发出去就失败 —— **哪怕别的发成功了**。
+#
+# 原先的规则是「一个都没成才算失败」，那会让**部分发布**报绿：三个包里发出去两个，
+# 工作流是绿的，而缺的那个要等到有人 npm install 撞上 404 才被发现。同一批本该
+# 一起上线的包版本对不齐，是比整批失败更难查的状态 —— 整批失败至少一眼看得见。
+#
+# 「什么都没发」且「所有包都已是 registry 上的版本」仍然算成功：那是文档类提交，
+# changesets 正确地没产生版本变化，前面的 nullglob 分支已经提前 exit 0 了。
+if [ ${#SKIPPED[@]} -gt 0 ]; then
+    echo "::error::${#SKIPPED[@]} 个包没发出去（已发 ${#PUBLISHED[@]} 个）—— 这一批的版本现在对不齐，需要人工收拾"
     exit 1
 fi
