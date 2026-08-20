@@ -8,10 +8,11 @@
        所以一直是绿的。顺带好处：检查的是当前源码，不会对着过期的 dist 通过。
 
        rootDir 必须一起放宽到仓库根：core 的源码进了同一个 program，留在
-       packages/mcp 上会满屏 TS6059。noEmit 下 rootDir 只影响这条校验，
-       真正 emit 走 tsconfig.json，那边仍然是 "." + 依赖 dist，都是对的。 */
+       packages/mcp 上会满屏 TS6059。真正 emit 走 tsconfig.json，那边是 "src"。 */
     "paths": { "harness-gui": ["../core/src/index.ts"] },
     "rootDir": ".."
   },
-  "include": ["src/**/*", "test/**/*"]
+  "include": ["src/**/*", "test/**/*"],
+  /* 同上：父配置的 exclude 里有 "test"，不重写的话测试文件根本不进 program。 */
+  "exclude": ["dist", "node_modules"]
 }

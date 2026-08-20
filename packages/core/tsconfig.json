@@ -6,7 +6,7 @@
     "declaration": true,
     "sourceMap": true,
     "outDir": "dist",
-    "rootDir": ".",
+    "rootDir": "src",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,

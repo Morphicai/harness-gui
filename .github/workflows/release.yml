@@ -64,6 +64,12 @@ jobs:
             - name: Test
               run: npm test
 
+            # 这一步开出的 "version packages" PR 是由 GITHUB_TOKEN 创建的，
+            # GitHub 的防递归规则会让它上面的 CI 停在 action_required（需人工点一下）。
+            # 现在 main 没有必需状态检查，所以不挡合并。一旦加了分支保护，
+            # 这个 PR 会永久 BLOCKED —— 那时要么给 bot 分支手动放行，
+            # 要么在这里把本 job 已经跑过的 typecheck/build/test 结果镜像到
+            # bot 分支 HEAD 的必需 context 上。
             - name: Open Version PR or publish
               uses: changesets/action@v1
               with:

@@ -120,7 +120,7 @@ describe('requireApproval', () => {
         action: 'delete',
         title: 'T',
         message: 'M',
-        preview: { type: 'text', text: '待删 12 行' },
+        preview: { type: 'markdown', text: '待删 12 行' },
       }),
     ).resolves.toBeUndefined()
   })
@@ -159,7 +159,7 @@ describe('showToUser', () => {
       show: () => Promise.reject(new Error('通道炸了')),
     } as unknown as Interact)
     await expect(
-      showToUser({ title: 'T', content: { type: 'text', text: 'x' } }),
+      showToUser({ title: 'T', content: { type: 'markdown', text: 'x' } }),
     ).resolves.toBeUndefined()
   })
 })

@@ -1,13 +1,13 @@
 {
   "name": "harness-gui",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "description": "A bridge between your program and a human — notify, show, confirm, select, form. Terminal, browser, or a native window.",
   "license": "MIT",
   "type": "commonjs",
-  "main": "dist/src/index.js",
-  "types": "dist/src/index.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
-    "harness-gui-daemon": "dist/src/daemon/bin.js"
+    "harness-gui-daemon": "dist/daemon/bin.js"
   },
   "files": [
     "dist",

@@ -1,5 +1,14 @@
 {
   "extends": "./tsconfig.json",
-  "compilerOptions": { "noEmit": true },
-  "include": ["src/**/*", "test/**/*"]
+  "compilerOptions": {
+    "noEmit": true,
+    /* rootDir 放宽到包根：test/ 在 src/ 之外，不放宽会满屏 TS6059。
+       noEmit 下 rootDir 只影响这条校验；真正 emit 走 tsconfig.json，那边是 "src"。 */
+    "rootDir": "."
+  },
+  "include": ["src/**/*", "test/**/*"],
+  /* 必须重写 exclude：父配置里有 "test"，而 exclude 是继承的、且会过滤掉
+     include 命中的文件。只写 include 的话 test/ 被静默跳过 —— 配置看着覆盖了
+     测试，实际一条都没检查（这个坑真的踩过）。 */
+  "exclude": ["dist", "node_modules"]
 }

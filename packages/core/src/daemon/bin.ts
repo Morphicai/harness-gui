@@ -3,8 +3,8 @@
  * daemon 进程入口。由 DaemonChannel 按需拉起，一般不用手动跑。
  *
  * 手动跑（排查用）：
- *   node dist/src/daemon/bin.js
- *   INTERACT_IDLE_MS=0 node dist/src/daemon/bin.js   # 常驻不自动退出
+ *   node dist/daemon/bin.js
+ *   INTERACT_IDLE_MS=0 node dist/daemon/bin.js   # 常驻不自动退出
  */
 
 import { Daemon } from './server.js'
