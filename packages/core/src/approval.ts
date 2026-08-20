@@ -21,6 +21,7 @@
 import { Interact } from './registry.js'
 import { DaemonChannel } from './daemon/client.js'
 import { TtyChannel } from './channels/tty.js'
+import { markdownToContent } from './markdown.js'
 import type { Content } from './types.js'
 
 /** 默认等人的时间。人要读完内容再决定，比机器超时该宽得多 */
@@ -61,10 +62,18 @@ export function getUi(): Interact {
   return shared
 }
 
-/** 测试用：替换底层实例；传 undefined 复位 */
-export function setUiForTest(next: Interact | undefined): void {
+/**
+ * 换掉共享实例。传 undefined 复位到默认（daemon + tty）。
+ *
+ * 给「整个进程都走同一个自建实例」的情况用 —— 比如一个 CLI 已经
+ * `createInteract()` 过了，希望批准也从那儿走。单次调用另有 `ui` 参数。
+ */
+export function setUi(next: Interact | undefined): void {
   shared = next
 }
+
+/** @deprecated 用 {@link setUi}。保留是因为 0.2.0 已经导出了这个名字 */
+export const setUiForTest = setUi
 
 export class ApprovalDeniedError extends Error {
   constructor(
@@ -82,11 +91,23 @@ export interface ApprovalRequest {
   action: string
   title: string
   message: string
-  /** 附带展示的内容（待删列表、消息正文预览等），批准之前先让人看见 */
-  preview?: Content
+  /**
+   * 附带展示的内容（待删列表、消息正文预览等），批准之前先让人看见。
+   *
+   * 给字符串就按 markdown 渲染 —— 「删除 12 行」和「删除**这** 12 行」
+   * 是两个不同的决定，而只有后者是知情的，所以让附上载荷这件事足够省事。
+   */
+  preview?: Content | string
   /** 不可逆或外发时置 true，界面上用醒目样式。默认 true */
   danger?: boolean
   timeoutMs?: number
+  /**
+   * 用这个实例，而不是共享的那个。
+   *
+   * SDK 用户往往已经 `createInteract()` 过了 —— 没有这个参数的话，批准会走
+   * 另一条通道（默认是 daemon），于是同一个程序里出现两个界面。
+   */
+  ui?: Interact
 }
 
 /**
@@ -99,12 +120,12 @@ export async function requireApproval(req: ApprovalRequest): Promise<void> {
   const mode = interactMode()
   if (mode === 'off') return
 
-  const ui = getUi()
+  const ui = req.ui ?? getUi()
 
   if (req.preview) {
     // 展示失败不该顶掉批准本身 —— 那只是没看到附件，不是操作出错
     try {
-      await ui.show({ title: req.title, content: req.preview })
+      await ui.show({ title: req.title, content: await asContent(req.preview) })
     } catch {
       /* 继续问 */
     }
@@ -160,10 +181,12 @@ export async function askText(p: {
   /** 置 true 走密码输入框，值不回显 */
   secret?: boolean
   timeoutMs?: number
+  /** 用这个实例，而不是共享的那个 */
+  ui?: Interact
 }): Promise<string | undefined> {
   if (interactMode() === 'off') return undefined
   try {
-    const r = await getUi().form({
+    const r = await (p.ui ?? getUi()).form({
       title: p.title,
       message: p.message,
       fields: [
@@ -194,13 +217,30 @@ export async function askText(p: {
  */
 export async function showToUser(p: {
   title: string
-  content: Content
+  /** 给字符串就按 markdown 渲染 */
+  content: Content | string
   awaitAck?: boolean
+  /** 用这个实例，而不是共享的那个 */
+  ui?: Interact
 }): Promise<void> {
   if (interactMode() === 'off') return
   try {
-    await getUi().show(p)
+    await (p.ui ?? getUi()).show({
+      title: p.title,
+      content: await asContent(p.content),
+      awaitAck: p.awaitAck,
+    })
   } catch {
     /* 展示失败不该让整个工具失败 */
   }
+}
+
+/**
+ * 字符串按 markdown 渲染，已经是 Content 的原样返回。
+ *
+ * 之所以值得有：批准的价值一半在「让人看见他在批准什么」，而手搓 Content
+ * 的那点摩擦足以让人省掉预览 —— 省掉之后批准就退化成一次盲签。
+ */
+export async function asContent(c: Content | string): Promise<Content> {
+  return typeof c === 'string' ? await markdownToContent(c) : c
 }

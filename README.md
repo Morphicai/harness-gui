@@ -40,6 +40,23 @@ const form = await ui.form({
 | **SDK** | any Node program — CLI, service, script | `npm i harness-gui` |
 | **MCP** | agents / LLM hosts (Claude Code, Cursor, …) | `@harness-gui/mcp`, stdio transport |
 
+**The capabilities live in the SDK.** The MCP server is a thin adapter over it — it adds
+tool schemas and a result shape a model can read, and takes nothing away. Anything an agent
+can do through a tool, a program can do directly:
+
+| | SDK | MCP |
+|---|---|---|
+| notify · show · confirm · select · form | ✅ | ✅ |
+| approval gate that throws unless a human agrees | `requireApproval` | `gui_confirm` |
+| markdown / table as the thing being approved | ✅ | ✅ |
+| channels, daemon, native shell, locale | ✅ | inherited |
+| **collect a secret that never enters a model's context** | `askText({ secret: true })` | **refused on purpose** |
+
+That last row is the only asymmetry, and it runs the other way: an MCP tool result goes into
+the model's context by definition, so `gui_form` rejects password fields rather than quietly
+writing a secret into the transcript. A program that needs one calls the SDK, where the value
+goes to the process and nowhere else.
+
 Agents also get a playbook — mostly about *when not to ask*, since an agent that
 confirms every step is worse than one that just does the work:
 
@@ -324,9 +341,23 @@ await requireApproval({
   action: 'delete rows',
   title: 'Drop 12 rows?',
   message: 'Soft delete — recoverable from history.',
-  preview: { type: 'table', columns: ['id', 'name'], rows: [...] },
+  preview: '| id | name |\n|---|---|\n| 41 | ACME |',   // markdown, or a Content object
 })
 // throws ApprovalDeniedError unless a human said yes
+```
+
+`preview` takes a plain markdown string because attaching the payload has to be nearly free.
+"Delete 12 rows" and "delete *these* 12 rows" are different decisions, and only one of them
+is informed — if building the preview is a chore, people skip it, and the approval degrades
+into a blind signature.
+
+Already built your own instance? Point the gate at it instead of the shared one, so a single
+program doesn't end up with two surfaces:
+
+```ts
+const ui = createInteract()
+await requireApproval({ ..., ui })     // per call
+setUi(ui)                              // or once, for the whole process
 ```
 
 Gated by `HARNESS_GUI`: `off` (default), `on` (ask; proceed if no channel can reach anyone),

@@ -62,9 +62,22 @@ await requireApproval({
   action: 'delete rows',
   title: 'Drop 12 rows?',
   message: 'Soft delete — recoverable from history.',
+  preview: '| id | name |\n|---|---|\n| 41 | ACME |',   // markdown, or a Content object
   danger: true,
 })
 // throws ApprovalDeniedError unless a human said yes
+```
+
+`preview` accepts markdown so attaching the payload is nearly free — "delete 12 rows" and
+"delete *these* 12 rows" are different decisions, and if building the preview is a chore
+people skip it.
+
+Already have your own instance? Pass it, so one program doesn't end up with two surfaces:
+
+```ts
+const ui = createInteract()
+await requireApproval({ ..., ui })   // per call
+setUi(ui)                            // or once, process-wide
 ```
 
 A `confirm: true` tool parameter is not a guardrail — *the model can fill that in itself*,
