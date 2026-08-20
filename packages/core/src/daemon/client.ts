@@ -67,7 +67,7 @@ export class DaemonChannel implements Channel {
     this.sock?.destroy()
     this.sock = undefined
     // 断开时把还在等的请求了结，避免调用方永久挂起
-    for (const [, w] of this.waiting) w.resolve({ id: '', ok: false, error: 'daemon 连接已断开' })
+    for (const [, w] of this.waiting) w.resolve({ id: '', ok: false, error: 'daemon connection closed' })
     this.waiting.clear()
   }
 
@@ -97,7 +97,7 @@ export class DaemonChannel implements Channel {
       this.bind(this.sock)
       return
     } catch {
-      if (!this.autoSpawn) throw new Error(`连不上 interact daemon（${this.sockPath}）`)
+      if (!this.autoSpawn) throw new Error(`cannot reach the harness-gui daemon (${this.sockPath})`)
     }
 
     spawnDaemon()
@@ -111,7 +111,7 @@ export class DaemonChannel implements Channel {
         this.bind(this.sock)
         return
       } catch {
-        if (Date.now() > deadline) throw new Error(`daemon 未能在 ${this.spawnTimeoutMs}ms 内就绪`)
+        if (Date.now() > deadline) throw new Error(`daemon did not become ready within ${this.spawnTimeoutMs}ms`)
       }
     }
   }
@@ -136,7 +136,7 @@ export class DaemonChannel implements Channel {
     sock.on('data', read)
     sock.on('close', () => {
       // 连接断了要把等待中的请求全部了结，否则调用方永远拿不到结果
-      for (const [, w] of this.waiting) w.resolve({ id: '', ok: false, error: 'daemon 连接已断开' })
+      for (const [, w] of this.waiting) w.resolve({ id: '', ok: false, error: 'daemon connection closed' })
       this.waiting.clear()
       if (this.sock === sock) this.sock = undefined
     })

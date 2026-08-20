@@ -17,7 +17,7 @@ describe('Content 校验', () => {
         html: '<b>x</b>',
         fallback: { type: 'url', url: 'http://x', fallback: { type: 'markdown', text: 'y' } },
       } as unknown as Content)
-    ).toThrowError(/必须是 T1/)
+    ).toThrowError(/must be T1/)
   })
 
   it('带 fallback 的 T2 合法', () => {

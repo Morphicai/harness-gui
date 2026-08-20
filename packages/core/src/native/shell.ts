@@ -16,6 +16,7 @@
  * `unavailableReason()`，让调用方能把原因打进日志。
  */
 
+import { resolveMessages, fmt, type LocaleOption } from '../i18n.js'
 import { spawn, ChildProcess } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import * as os from 'node:os'
@@ -47,6 +48,8 @@ export interface NativeShellOptions {
   /** bundle 路径或可执行文件路径；不给则按 env → npm 壳包 → 标准位置查找 */
   appPath?: string
   onLog?: (msg: string) => void
+  /** 日志文案语言；不给则用全局默认 */
+  locale?: LocaleOption
 }
 
 // ── 候选位置 ────────────────────────────────────────────────────────────────
@@ -156,16 +159,17 @@ function webView2Present(): boolean {
  *
  * 调用方（daemon）应当把这句话打进日志再退回 web —— 静默降级会让人以为壳坏了。
  */
-export function unavailableReason(appPath?: string): string | undefined {
+export function unavailableReason(appPath?: string, locale?: LocaleOption): string | undefined {
+  const m = resolveMessages(locale)
   const target = shellTarget()
   if (!target) {
-    return `原生壳没有 ${process.platform}-${process.arch} 的构建，将使用浏览器通道`
+    return fmt(m.noBuildForPlatform, { platform: process.platform, arch: process.arch })
   }
   if (process.platform === 'win32' && !webView2Present()) {
-    return `未检测到 Edge WebView2 Runtime，原生壳会白屏，改用浏览器通道（装上 WebView2 或用 ${APP_ENV} 指定自带运行时的壳）`
+    return fmt(m.webView2Missing, { env: APP_ENV })
   }
   if (!resolveExecutable(appPath)) {
-    return `没找到原生壳（用 ${APP_ENV} 指定其位置），将使用浏览器通道`
+    return fmt(m.shellNotFound, { env: APP_ENV })
   }
   return undefined
 }
@@ -193,7 +197,7 @@ export interface NativeShell {
  */
 export function launch(url: string, opts: NativeShellOptions = {}): NativeShell {
   const bin = resolveExecutable(opts.appPath)
-  if (!bin) throw new Error(unavailableReason(opts.appPath) ?? '找不到原生外壳')
+  if (!bin) throw new Error(unavailableReason(opts.appPath, opts.locale) ?? resolveMessages(opts.locale).nativeUnavailable)
 
   const log = opts.onLog ?? (() => {})
   const child = spawn(bin, [], {
@@ -207,7 +211,7 @@ export function launch(url: string, opts: NativeShellOptions = {}): NativeShell 
   })
 
   child.stderr?.on('data', d => log(`[native] ${String(d).trimEnd()}`))
-  child.on('error', e => log(`[native] 启动失败：${e.message}`))
+  child.on('error', e => log(fmt(resolveMessages(opts.locale).launchFailed, { message: e.message })))
 
   return {
     child,

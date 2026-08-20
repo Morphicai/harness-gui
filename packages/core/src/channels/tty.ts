@@ -4,11 +4,14 @@
  * 无 TTY（管道 / CI）时 supports() 返回假，让选择器跳过它。否则会在没人能回答的环境里挂住。
  */
 
+import { resolveMessages, type LocaleOption, type Messages } from '../i18n.js'
 import * as readline from 'node:readline/promises'
 import { Channel, Interaction, Outcome, isOneWay } from '../types.js'
 import { renderText } from '../content.js'
 
 export interface TtyChannelOptions {
+  /** 库自己的文案语言；不给则用全局默认（见 i18n.ts） */
+  locale?: LocaleOption
   input?: NodeJS.ReadableStream & { isTTY?: boolean }
   output?: NodeJS.WritableStream
   /** 强制认为有 TTY（测试用） */
@@ -20,11 +23,14 @@ export class TtyChannel implements Channel {
   private input: NodeJS.ReadableStream & { isTTY?: boolean }
   private output: NodeJS.WritableStream
   private forceTty: boolean
+  /* 构造时解析一次而不是每次用时解析：一次交互中途换语言只会让人困惑 */
+  private m: Messages
 
   constructor(opts: TtyChannelOptions = {}) {
     this.input = opts.input ?? process.stdin
     this.output = opts.output ?? process.stdout
     this.forceTty = opts.forceTty ?? false
+    this.m = resolveMessages(opts.locale)
   }
 
   supports(): boolean {
@@ -42,9 +48,9 @@ export class TtyChannel implements Channel {
       }
 
       case 'show': {
-        write(`\n── ${i.title} ──\n${renderText(i.content)}`)
+        write(`\n── ${i.title} ──\n${renderText(i.content, this.m)}`)
         if (!isOneWay(i)) return this.ask(i, async rl => {
-          await rl.question('\n按回车继续… ')
+          await rl.question(this.m.pressEnter)
           return { action: 'accept' as const }
         })
         return { action: 'accept' }
@@ -53,7 +59,7 @@ export class TtyChannel implements Channel {
       case 'confirm': {
         write(`\n${i.danger ? '⚠ ' : ''}${i.title}\n  ${i.message}`)
         return this.ask(i, async rl => {
-          const raw = (await rl.question('  确认? [y/N] ')).trim().toLowerCase()
+          const raw = (await rl.question(this.m.confirmPrompt)).trim().toLowerCase()
           const yes = raw === 'y' || raw === 'yes'
           // 明确回答 n / 直接回车都算主动放弃，而不是超时
           return { action: yes ? 'accept' : 'cancel', value: yes } as Outcome
@@ -65,7 +71,7 @@ export class TtyChannel implements Channel {
         i.options.forEach((o, idx) => {
           write(`  ${idx + 1}) ${o.label}${o.description ? '  — ' + o.description : ''}`)
         })
-        const hint = i.multiple ? '  选择（逗号分隔，留空取消）: ' : '  选择编号（留空取消）: '
+        const hint = i.multiple ? this.m.selectMultiple : this.m.selectOne
         return this.ask(i, async rl => {
           const raw = (await rl.question(hint)).trim()
           if (!raw) return { action: 'cancel' }
@@ -87,7 +93,7 @@ export class TtyChannel implements Channel {
             if (f.type === 'select') {
               write(`  ${f.label}`)
               f.options.forEach((o, idx) => write(`    ${idx + 1}) ${o.label}`))
-              const raw = (await rl.question('    编号: ')).trim()
+              const raw = (await rl.question(this.m.itemNumber)).trim()
               const n = Number(raw)
               value[f.name] = Number.isInteger(n) && n >= 1 && n <= f.options.length
                 ? f.options[n - 1].value

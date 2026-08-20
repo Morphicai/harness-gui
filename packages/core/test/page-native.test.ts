@@ -8,6 +8,7 @@
  * 那样浏览器页面会当场抛异常，而单靠服务端 fetch 测试完全看不见。
  */
 import { describe, it, expect } from 'vitest'
+import { MESSAGES } from '../src/i18n.js'
 import { renderPage } from '../src/channels/web/page.js'
 
 interface Call {
@@ -177,6 +178,6 @@ describe('页面的原生增强', () => {
 
     page.dispatch({ id: 'i1', kind: 'form', title: '发布凭据', fields: [] })
     const note = page.calls.find(c => c.kind === 'notify')
-    expect(note?.arg.body).toBe('需要你填写')
+    expect(note?.arg.body).toBe(MESSAGES.en.needFill)
   })
 })

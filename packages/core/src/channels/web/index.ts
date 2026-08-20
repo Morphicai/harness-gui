@@ -11,6 +11,7 @@
  * 一次交互开一个新窗口在连续问答时是灾难。
  */
 
+import { resolveMessages, type LocaleOption, type Messages } from '../../i18n.js'
 import * as http from 'node:http'
 import { randomBytes, timingSafeEqual } from 'node:crypto'
 import { spawn } from 'node:child_process'
@@ -19,6 +20,9 @@ import { Channel, Interaction, Outcome, isOneWay } from '../../types.js'
 import { renderPage } from './page.js'
 
 export interface WebChannelOptions {
+  /** 库自己的文案语言（按钮、校验提示等）；不给则用全局默认。
+      调用方给的 title / message / 选项标签不受影响 —— 那些原样透传 */
+  locale?: LocaleOption
   /** 是否自动打开浏览器。默认：有 TTY 且非 CI */
   autoOpen?: boolean
   /** 页面标题 */
@@ -83,6 +87,7 @@ export class WebChannel implements Channel {
   private seq = 0
   private readonly autoOpen: boolean
   private readonly title: string
+  private readonly m: Messages
   private readonly port: number
   private readonly graceMs: number
   private readonly instrument?: WebChannelOptions['instrument']
@@ -91,7 +96,9 @@ export class WebChannel implements Channel {
 
   constructor(opts: WebChannelOptions = {}) {
     this.autoOpen = opts.autoOpen ?? (Boolean(process.stdout.isTTY) && !process.env.CI)
-    this.title = opts.title ?? 'interact'
+    /* 构造时解析一次：页面是自包含的，文案在生成那一刻就烧进去了 */
+    this.m = resolveMessages(opts.locale)
+    this.title = opts.title ?? 'harness-gui'
     this.port = opts.port ?? 0
     this.graceMs = opts.disconnectGraceMs ?? 5000
     this.instrument = opts.instrument
@@ -287,7 +294,7 @@ export class WebChannel implements Channel {
 
     if (path === '/' && req.method === 'GET') {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
-      res.end(renderPage(this.token, this.title, this.instrumentHead()))
+      res.end(renderPage(this.token, this.title, this.instrumentHead(), this.m))
       return
     }
 

@@ -84,18 +84,16 @@ one of them is informed. Passing the payload is not decoration.
 │   42   Globex      2023-11-18                0               │
 │   …                                                          │
 │                                                             │
-│                                    [ 取消 ]   [ 确认 ]       │
+│                              [ Cancel ]   [ Confirm ]       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 Terminal, browser tab, or native window — same content, chosen by whichever
 channel can currently reach them.
 
-> The title and body come from the caller, so they read in whatever language you
-> wrote them in. **The library's own chrome is currently Chinese-only** — buttons,
-> validation messages, the terminal prompts. See
-> [issues](https://github.com/Morphicai/harness-gui/issues) if that blocks you;
-> it is ~20 strings across `channels/web/page.ts` and `channels/tty.ts`.
+> The title and body come from the caller, so they read in whatever language you wrote
+> them in. The buttons are the library's own chrome — English by default, switchable
+> (see [Language](#language)).
 
 **3. They notice the open invoices and decline.**
 
@@ -241,6 +239,38 @@ can construct a human's approval.
 
 Remote agents (a machine elsewhere reaching a specific person) cannot use a scheme at all
 and need an outbound-dialled relay instead. Design sketch: `docs/hosts-and-invocation.md`.
+
+## Language
+
+The library's own chrome — buttons, validation messages, terminal prompts, the reason it
+fell back from the native shell — is **English by default**. Built-in: `en`, `zh`.
+
+```ts
+createInteract({ locale: 'zh' })          // per instance
+setLocale('zh')                            // per process
+// HARNESS_GUI_LOCALE=zh                   // per environment
+```
+
+Explicit argument beats `setLocale`, which beats the env var, which falls back to English.
+
+**Your strings are never touched.** Titles, messages, option labels and field labels come
+from the caller and pass through verbatim — the locale only picks the words the library
+supplies.
+
+Override individual strings without waiting for a release; anything you leave out falls
+back to English, so a partial override can never render `undefined`:
+
+```ts
+createInteract({ locale: { confirm: 'Ship it', cancel: 'Hold on' } })
+```
+
+**It deliberately does not follow `LANG`.** A default has to be predictable — the same code
+answering in a different language depending on the machine is the kind of difference that is
+hardest to reproduce in CI and containers. Ask for another language explicitly.
+
+**Errors and daemon logs stay English**, and are not part of the table. They are read by
+developers, and a localized error message cannot be searched or matched against an issue —
+which is exactly what someone hitting one needs to do.
 
 ## Platforms
 

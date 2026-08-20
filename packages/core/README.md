@@ -92,6 +92,21 @@ notifications, a tray presence, and surviving a window close. Point
 `HARNESS_GUI_APP=/path/to/Interact.app` at a shell to enable it; without one, the browser
 is used and the reason is logged.
 
+## Language
+
+The library's own chrome (buttons, terminal prompts, fallback reasons) is **English by
+default**; `en` and `zh` are built in. Your titles, messages and labels pass through
+untouched.
+
+```ts
+createInteract({ locale: 'zh' })                       // per instance
+setLocale('zh')                                        // per process
+createInteract({ locale: { confirm: 'Ship it' } })     // partial override, rest stays English
+```
+
+`HARNESS_GUI_LOCALE=zh` works too. It does not follow `LANG` — a default has to be
+predictable. Errors and daemon logs are always English so they stay searchable.
+
 ## Also in this project
 
 - `@harness-gui/mcp` — the same five interactions as MCP tools, for agents and LLM hosts

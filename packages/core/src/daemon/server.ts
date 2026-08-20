@@ -6,6 +6,7 @@
  * daemon 把「界面」这件事收拢成一份，消费者只管把 Interaction 递进来。
  */
 
+import { resolveMessages, type LocaleOption } from '../i18n.js'
 import * as net from 'node:net'
 import * as fs from 'node:fs'
 import { Interact } from '../registry.js'
@@ -33,6 +34,8 @@ export interface DaemonOptions {
   /** 自定义 UI（测试用）。不传则建一个只含 web 通道的 */
   ui?: Interact
   onLog?: (msg: string) => void
+  /** 库自己的文案语言，会往下传给它建的 web 通道；不给则用全局默认 */
+  locale?: LocaleOption
 }
 
 export class Daemon {
@@ -103,7 +106,7 @@ export class Daemon {
      * 判据只能是「连一下试试」，文件存在与否说明不了任何事。
      */
     if (await probeAlive(sock)) return false
-    this.log('发现残留 socket，清理后重试')
+    this.log('stale socket found; cleaned up and retrying')
     try {
       fs.unlinkSync(sock)
     } catch {
@@ -133,25 +136,25 @@ export class Daemon {
     // 用不了原生壳时把原因说出来再退回 web —— 静默降级会让人以为壳坏了，
     // 而真实原因（平台没构建 / 缺 WebView2 / 没装壳包）各不相同、排查方向完全不同
     if (nativeOpt !== false && !nativeAvailable(appPath)) {
-      this.log(nativeUnavailableReason(appPath) ?? '原生壳不可用')
+      this.log(nativeUnavailableReason(appPath, this.opts.locale) ?? resolveMessages(this.opts.locale).nativeUnavailable)
     }
     if (nativeOpt !== false && nativeAvailable(appPath)) {
-      const web = new WebChannel({ ...this.opts.web, autoOpen: false, port: NATIVE_PORT })
+      const web = new WebChannel({ locale: this.opts.locale, ...this.opts.web, autoOpen: false, port: NATIVE_PORT })
       try {
         await web.getUrl() // 真去 listen，绑不上会抛
         this.web = web
         this.useNative = true
-        this.log(`原生外壳模式，页面在 127.0.0.1:${NATIVE_PORT}`)
+        this.log(`native shell mode; page at 127.0.0.1:${NATIVE_PORT}`)
       } catch (err) {
         await web.close()
-        this.log(`固定端口 ${NATIVE_PORT} 绑不上（${(err as Error).message}），退回浏览器`)
+        this.log(`could not bind fixed port ${NATIVE_PORT} (${(err as Error).message}); falling back to the browser`)
       }
     }
 
     if (!this.web) {
       // 浏览器模式让 WebChannel 自己在首次交互时弹 —— 它已经有 autoOpen 了。
       // daemon 跑在 detached 进程里，isTTY 是 false，所以必须显式打开
-      this.web = new WebChannel({ port: 0, ...this.opts.web, autoOpen: true })
+      this.web = new WebChannel({ locale: this.opts.locale, port: 0, ...this.opts.web, autoOpen: true })
     }
     this.ui.register(this.web)
   }
@@ -172,10 +175,10 @@ export class Daemon {
       const url = await this.web!.getUrl()
       try {
         this.shell = launchNative(url, { appPath: this.nativeAppPath(), onLog: this.log })
-        this.log(`原生外壳已拉起 pid=${this.shell.child.pid}`)
+        this.log(`native shell started pid=${this.shell.child.pid}`)
       } catch (err) {
         // 装了却起不来（权限、Gatekeeper、二进制损坏…）。人还等着，别把交互耗在这里
-        this.log(`原生外壳拉不起来（${(err as Error).message}），改用浏览器`)
+        this.log(`native shell would not start (${(err as Error).message}); using the browser instead`)
         this.useNative = false
         openBrowser(url)
       }
@@ -242,12 +245,12 @@ export class Daemon {
         try {
           req = JSON.parse(line)
         } catch {
-          return send({ id: '', ok: false, error: '请求不是合法 JSON' })
+          return send({ id: '', ok: false, error: 'request is not valid JSON' })
         }
         void this.dispatch(req, send)
       },
       () => {
-        this.log('单行超限，断开该消费者')
+        this.log('line too long; dropping that consumer')
         sock.destroy()
       },
     )
@@ -283,7 +286,7 @@ export class Daemon {
         }
         return
       }
-      send({ id: (req as { id: string }).id, ok: false, error: `未知方法：${(req as { method: string }).method}` })
+      send({ id: (req as { id: string }).id, ok: false, error: `unknown method: ${(req as { method: string }).method}` })
     } catch (err) {
       send({ id: req.id, ok: false, error: err instanceof Error ? err.message : String(err) })
     }
@@ -301,7 +304,7 @@ export class Daemon {
     if (this.idleMs <= 0 || this.closing) return
     if (this.consumers.size > 0 || this.pending > 0) return
     this.idleTimer = setTimeout(() => {
-      this.log('空闲超时，退出')
+      this.log('idle timeout; exiting')
       void this.close()
     }, this.idleMs)
     this.idleTimer.unref?.()

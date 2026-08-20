@@ -5,6 +5,7 @@
  * 两者是同一件事 —— 「把内容变成不依赖图形能力的可读形式」。
  */
 
+import { resolveMessages, fmt, type LocaleOption } from './i18n.js'
 import { Content, T1Content, isT2 } from './types.js'
 
 /**
@@ -15,17 +16,18 @@ import { Content, T1Content, isT2 } from './types.js'
  */
 export function validateContent(c: Content): void {
   if (!c || typeof c !== 'object' || typeof (c as { type?: unknown }).type !== 'string') {
-    throw new Error('[interact] content 必须是带 type 字段的对象')
+    throw new Error('[harness-gui] content must be an object with a `type` field')
   }
   if (isT2(c)) {
     if (!c.fallback) {
       throw new Error(
-        `[interact] T2 内容（type="${c.type}"）缺少必填的 fallback 字段。` +
-          `没有它，这段内容在终端等非浏览器通道上会完全消失。请提供一份 T1 形态的降级内容。`
+        `[harness-gui] T2 content (type="${c.type}") is missing the required \`fallback\`. ` +
+          `Without it this content vanishes entirely on non-browser channels such as the ` +
+          `terminal. Provide a T1 fallback.`
       )
     }
     if (isT2(c.fallback as Content)) {
-      throw new Error('[interact] fallback 必须是 T1 内容，不能又是 T2')
+      throw new Error('[harness-gui] fallback must be T1 content, not another T2')
     }
     validateContent(c.fallback)
   }
@@ -38,7 +40,7 @@ export function toT1(c: Content): T1Content {
 
 // ==================== 文本渲染 ====================
 
-export function renderText(c: Content): string {
+export function renderText(c: Content, locale?: LocaleOption): string {
   const t1 = toT1(c)
   switch (t1.type) {
     case 'markdown':
@@ -48,9 +50,12 @@ export function renderText(c: Content): string {
     case 'chart':
       return renderChart(t1.labels, t1.values, t1.unit)
     case 'diff':
-      return renderDiff(t1.before, t1.after, t1.filename)
+      return renderDiff(t1.before, t1.after, t1.filename, locale)
     case 'image':
-      return `[图片${t1.alt ? ': ' + t1.alt : ''}] ${t1.src}`
+      return fmt(resolveMessages(locale).imagePlaceholder, {
+        alt: t1.alt ? ': ' + t1.alt : '',
+        src: t1.src,
+      })
   }
 }
 
@@ -102,7 +107,7 @@ function renderChart(labels: string[], values: number[], unit?: string): string 
  * 极简行级 diff：只标出「前面独有」和「后面独有」的行，不做最长公共子序列。
  * 通道要的是「看得出改了什么」，不是精确的 patch。
  */
-function renderDiff(before: string, after: string, filename?: string): string {
+function renderDiff(before: string, after: string, filename?: string, locale?: LocaleOption): string {
   const a = before.split('\n')
   const b = after.split('\n')
   const bSet = new Set(b)
@@ -111,6 +116,6 @@ function renderDiff(before: string, after: string, filename?: string): string {
   if (filename) out.push(`--- ${filename}`)
   for (const line of a) if (!bSet.has(line)) out.push(`- ${line}`)
   for (const line of b) if (!aSet.has(line)) out.push(`+ ${line}`)
-  if (out.length === (filename ? 1 : 0)) out.push('(无差异)')
+  if (out.length === (filename ? 1 : 0)) out.push(resolveMessages(locale).noDiff)
   return out.join('\n')
 }

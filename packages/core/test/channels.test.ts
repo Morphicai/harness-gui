@@ -17,7 +17,7 @@ describe('scripted channel', () => {
     const ch = new ScriptedChannel([answer.accept()])
     await ch.present({ kind: 'confirm', title: '1', message: 'm' })
     await expect(ch.present({ kind: 'confirm', title: '2', message: 'm' }))
-      .rejects.toThrowError(/第 2 次交互/)
+      .rejects.toThrowError(/interaction #2/)
   })
 
   it('单向交互只记录、不消费预置答案', async () => {

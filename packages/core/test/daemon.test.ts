@@ -316,13 +316,13 @@ describe('daemon 消费者容错', () => {
     await d.close() // daemon 没了
 
     // 必须以错误了结 —— 挂死是最糟的失败方式，调用方连降级的机会都没有
-    await expect(p).rejects.toThrow(/断开/)
+    await expect(p).rejects.toThrow(/connection closed/)
     release(undefined)
   })
 
   it('autoSpawn 关闭时连不上要明确报错', async () => {
     const c = new DaemonChannel({ socket: tmpSock(), autoSpawn: false })
     cleanup.push(() => c.close())
-    await expect(c.present({ kind: 'confirm', title: 't', message: 'm' })).rejects.toThrow(/连不上/)
+    await expect(c.present({ kind: 'confirm', title: 't', message: 'm' })).rejects.toThrow(/cannot reach/)
   })
 })

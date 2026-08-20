@@ -5,6 +5,7 @@
  * 而它以为自己拿到了必填项。这种错不会当场报出来，会一路漏到业务逻辑里才暴露。
  */
 import { describe, it, expect } from 'vitest'
+import { MESSAGES } from '../src/i18n.js'
 import { renderPage } from '../src/channels/web/page.js'
 
 interface FieldStub {
@@ -114,7 +115,7 @@ describe('表单必填校验', () => {
     page.click('accept')
 
     expect(page.submits()).toHaveLength(0)
-    expect(page.error()).toContain('必填')
+    expect(page.error()).toBe(MESSAGES.en.fillRequired)
     // 光标要落到出问题的那个字段上，否则长表单里用户得自己找
     expect(token.focused).toBe(true)
     expect(token.classes).toContain('bad')
@@ -181,7 +182,7 @@ describe('select 未选时的反馈', () => {
 
     expect(page.submits()).toHaveLength(0)
     // 点了没反应的按钮比报错更糟：用户分不清是没选还是程序挂了
-    expect(page.error()).toContain('选择')
+    expect(page.error()).toBe(MESSAGES.en.pickOne)
   })
 
   it('选了就正常提交', () => {

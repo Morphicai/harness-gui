@@ -7,14 +7,24 @@
  * ```ts
  * import { createInteract } from 'harness-gui'
  *
- * const ui = createInteract()               // 默认注册 tty + web
- * const r = await ui.confirm({ title: '删除', message: '不可撤销', danger: true })
+ * const ui = createInteract()               // registers tty + web by default
+ * const r = await ui.confirm({ title: 'Delete?', message: 'Not undoable', danger: true })
  * if (r.action === 'accept') { ... }
  * await ui.close()
  * ```
  */
 
 export * from './types.js'
+export {
+  MESSAGES,
+  LOCALE_ENV,
+  setLocale,
+  resolveMessages,
+  fmt,
+  type Locale,
+  type LocaleOption,
+  type Messages,
+} from './i18n.js'
 export { validateContent, renderText, toT1 } from './content.js'
 export { markdownToContent, type RichMarkdownOptions } from './markdown.js'
 export { Interact, DEFAULT_PRIORITY, type PresentOptions } from './registry.js'
@@ -49,12 +59,21 @@ export {
 import { Interact } from './registry.js'
 import { TtyChannel } from './channels/tty.js'
 import { WebChannel, WebChannelOptions } from './channels/web/index.js'
+import type { LocaleOption } from './i18n.js'
 
 export interface CreateInteractOptions {
   /** 注册终端通道，默认 true */
   tty?: boolean
   /** 注册本地网页通道，默认 true；传对象可配置 */
   web?: boolean | WebChannelOptions
+  /**
+   * 库自己的文案语言（按钮、终端 prompt、降级原因）。默认英文。
+   *
+   * 只影响库产出的字 —— 你传进来的 title / message / 选项标签原样透传。
+   * 也可以给一份部分覆盖：`{ confirm: 'Yes', cancel: 'No' }`。
+   * 想按进程统一设置用 `setLocale()`，或设环境变量 `HARNESS_GUI_LOCALE=zh`。
+   */
+  locale?: LocaleOption
 }
 
 /**
@@ -66,10 +85,13 @@ export interface CreateInteractOptions {
 export function createInteract(opts: CreateInteractOptions = {}): Interact {
   const ui = new Interact()
   if (opts.web !== false) {
-    ui.register(new WebChannel(typeof opts.web === 'object' ? opts.web : {}))
+    // 显式的 web.locale 优先于顶层 locale —— 单独配某个通道是更具体的意图
+    ui.register(
+      new WebChannel({ locale: opts.locale, ...(typeof opts.web === 'object' ? opts.web : {}) }),
+    )
   }
   if (opts.tty !== false) {
-    ui.register(new TtyChannel())
+    ui.register(new TtyChannel({ locale: opts.locale }))
   }
   return ui
 }

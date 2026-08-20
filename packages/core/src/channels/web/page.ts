@@ -1,3 +1,5 @@
+import { resolveMessages, type Messages } from '../../i18n.js'
+
 /**
  * web channel 的页面 —— 完全自包含，不引任何外部资源
  *
@@ -7,10 +9,17 @@
 /**
  * @param head 额外注入 <head> 的原始 HTML（探针脚本等）。默认空 —— 页面自包含是常态，
  *             注入是显式开启的例外，见 WebChannelOptions.instrument
+ * @param msgs 库自己的文案。整份序列化进页面脚本（见下面的 `var M=`）——
+ *             页面是自包含的，运行时没有第二次机会去取文案。
  */
-export function renderPage(token: string, title: string, head = ''): string {
+export function renderPage(
+  token: string,
+  title: string,
+  head = '',
+  msgs: Messages = resolveMessages(),
+): string {
   return `<!doctype html>
-<html lang="zh"><head>
+<html lang="${escapeHtml(msgs.lang)}"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${escapeHtml(title)}</title>
@@ -56,9 +65,11 @@ img{max-width:100%;border-radius:8px}
 input.bad,select.bad{border-color:var(--danger)}
 </style></head>
 <body><div class="wrap" id="root">
-  <div class="idle"><span class="dot"></span>等待交互…</div>
+  <div class="idle"><span class="dot"></span>${escapeHtml(msgs.waiting)}</div>
 </div>
 <script>
+/* 库自己的文案。调用方给的 title/message/选项标签不在这里 —— 那些原样透传 */
+var M=${JSON.stringify(msgs)};
 (function(){
 var T=${JSON.stringify(token)};
 var root=document.getElementById('root');
@@ -81,7 +92,7 @@ function ping(i){
   if(!Z||!canNotify)return;
   // notify 本身就是通知，一律发；其余交互只在用户没盯着窗口时才打扰
   if(i.kind!=='notify'&&document.hasFocus())return;
-  var body=i.message||(i.kind==='confirm'?'需要你确认':i.kind==='select'?'需要你选择':i.kind==='form'?'需要你填写':'');
+  var body=i.message||(i.kind==='confirm'?M.needConfirm:i.kind==='select'?M.needSelect:i.kind==='form'?M.needFill:'');
   // 通知失败不能影响交互本身：页面照常渲染，人在窗口里一样能答
   try{Z.os.showNotification({title:i.title,body:body}).catch(function(){})}catch(e){}
 }
@@ -104,7 +115,7 @@ reportVisibility();
 
 var es=new EventSource('/events?t='+encodeURIComponent(T));
 es.addEventListener('interaction',function(e){render(JSON.parse(e.data))});
-es.addEventListener('bye',function(){root.innerHTML='<div class="done">会话已结束，可以关闭此页面。</div>';es.close()});
+es.addEventListener('bye',function(){root.innerHTML='<div class="done">'+esc(M.sessionEnded)+'</div>';es.close()});
 
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 
@@ -158,7 +169,7 @@ function content(c){
 function submit(id,action,value){
   fetch('/submit?t='+encodeURIComponent(T),{method:'POST',headers:{'content-type':'application/json'},
     body:JSON.stringify({id:id,action:action,value:value})});
-  root.innerHTML='<div class="idle"><span class="dot"></span>已提交，等待下一次交互…</div>';
+  root.innerHTML='<div class="idle"><span class="dot"></span>'+esc(M.submitted)+'</div>';
   scheduleHide();
 }
 
@@ -208,14 +219,14 @@ function render(i){
   var body='',foot='';
   if(i.kind==='notify'||i.kind==='show'){
     if(i.content)body='<div class="card">'+content(i.content)+'</div>';
-    foot=i.awaitAck?'<button class="primary" data-a="accept">知道了</button>':'';
+    foot=i.awaitAck?'<button class="primary" data-a="accept">'+esc(M.ack)+'</button>':'';
   }else if(i.kind==='confirm'){
-    foot='<button class="'+(i.danger?'danger':'primary')+'" data-a="accept">确认</button><button data-a="cancel">取消</button>';
+    foot='<button class="'+(i.danger?'danger':'primary')+'" data-a="accept">'+esc(M.confirm)+'</button><button data-a="cancel">'+esc(M.cancel)+'</button>';
   }else if(i.kind==='select'){
     body='<div class="card">'+i.options.map(function(o,ix){
       return '<label class="opt"><input type="'+(i.multiple?'checkbox':'radio')+'" name="sel" value="'+esc(o.value)+'"'+(!i.multiple&&ix===0?' checked':'')+'><span><b>'+esc(o.label)+'</b>'+(o.description?'<div class="d">'+esc(o.description)+'</div>':'')+'</span></label>'
     }).join('')+'</div>';
-    foot='<button class="primary" data-a="accept">确定</button><button data-a="cancel">取消</button>';
+    foot='<button class="primary" data-a="accept">'+esc(M.ok)+'</button><button data-a="cancel">'+esc(M.cancel)+'</button>';
   }else if(i.kind==='form'){
     // 必填项在标签上打 * 并带 data-req，提交前据此校验 —— 声明了 required
     // 却不挡空值，等于让发起方拿着 "" 当成用户填过
@@ -226,7 +237,7 @@ function render(i){
       if(f.type==='boolean')return '<label class="opt"><input type="checkbox" data-n="'+esc(f.name)+'"'+(f.default?' checked':'')+'><span>'+esc(f.label)+'</span></label>';
       return '<label>'+esc(f.label)+req(f)+'</label><input type="'+esc(f.type)+'" data-n="'+esc(f.name)+'"'+rq(f)+' value="'+esc(f.default||'')+'" placeholder="'+esc(f.placeholder||'')+'">';
     }).join('')+'</div>';
-    foot='<button class="primary" data-a="accept">提交</button><button data-a="cancel">取消</button>';
+    foot='<button class="primary" data-a="accept">'+esc(M.submit)+'</button><button data-a="cancel">'+esc(M.cancel)+'</button>';
   }
   root.innerHTML=h+body+(foot?'<div class="row">'+foot+'</div>':'');
 
@@ -240,7 +251,7 @@ function render(i){
       if(i.kind==='select'){
         var checked=Array.prototype.filter.call(root.querySelectorAll('input[name=sel]'),function(x){return x.checked}).map(function(x){return x.value});
         // 一个点了没反应的按钮比报错更糟：用户不知道是没选、还是程序卡了
-        if(checked.length===0)return fail('请先选择一项');
+        if(checked.length===0)return fail(M.pickOne);
         v=i.multiple?checked:checked[0];
       }else if(i.kind==='form'){
         /*
@@ -263,7 +274,7 @@ function render(i){
         if(bad){
           bad.classList.add('bad');
           if(bad.focus)bad.focus();
-          return fail('请填写标了 * 的必填项');
+          return fail(M.fillRequired);
         }
       }else if(i.kind==='confirm'){v=true}
       submit(i.id,'accept',v);

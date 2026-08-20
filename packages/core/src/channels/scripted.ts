@@ -45,8 +45,9 @@ export class ScriptedChannel implements Channel {
     if (this.queue.length === 0) {
       const n = this.transcriptLog.length + 1
       throw new Error(
-        `[interact:scripted] 预置答案已用完，但发生了第 ${n} 次交互：` +
-          `${i.kind} "${i.title}"。测试里多出来的交互通常是缺陷信号，不该被静默吞掉。`
+        `[harness-gui:scripted] ran out of scripted answers on interaction #${n}: ` +
+          `${i.kind} "${i.title}". An unexpected extra interaction in a test is usually a ` +
+          `defect signal, so it is surfaced rather than swallowed.`
       )
     }
 

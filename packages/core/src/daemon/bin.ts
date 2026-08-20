@@ -22,11 +22,11 @@ async function main() {
   if (!owned) {
     // 已经有 daemon 在跑 —— 安静退出。两个消费者同时冷启动时必然走到这里，
     // 不是错误，报错反而会让调用方以为出了问题
-    if (verbose) console.error('[interact-daemon] 已有实例在运行，退出')
+    if (verbose) console.error('[harness-gui-daemon] another instance is already running; exiting')
     process.exit(0)
   }
 
-  if (verbose) console.error(`[interact-daemon] 就绪 pid=${process.pid}`)
+  if (verbose) console.error(`[harness-gui-daemon] ready pid=${process.pid}`)
 
   const bye = () => {
     void daemon.close().then(() => process.exit(0))
