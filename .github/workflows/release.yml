@@ -40,13 +40,13 @@ jobs:
 
             - uses: actions/setup-node@v4
               with:
-                  node-version: '20'
+                  node-version: '22'
                   cache: 'npm'
                   registry-url: 'https://registry.npmjs.org'
 
             # npm ≥ 11.5 才会在 env 里没有 token 时正确协商 trusted publishing。
-            # 钉在 npm 11 线上而不是 @latest：npm 12 要求 Node ^22.22.2 || ^24.15.0 || >=26,
-            # 与上面钉的 node 20 直接 EBADENGINE。
+            # 钉在 npm 11 线上而不是 @latest：npm 12 对 Node 的下限要求更高
+            # （^22.22.2 || ^24.15.0 || >=26），跟着 @latest 走随时会 EBADENGINE。
             - name: Upgrade npm for OIDC trusted publishing
               run: npm install -g npm@11 && npm --version
 
