@@ -12,8 +12,17 @@ concurrency:
 
 jobs:
     check:
-        name: Typecheck / Build / Test
-        runs-on: ubuntu-latest
+        # 跑双平台：原生壳只有 macOS 构建，而通道层（daemon 用 unix socket / 命名管道、
+        # 终端探测、壳定位）到处都在读 process.platform。单平台 CI 放过的是
+        # 「只在作者机器上绿」的用例 —— 首次 CI 就是这样红的。
+        # windows-latest 还没进来：那边 daemon 走命名管道，从没在 CI 上验过，
+        # 想加就得当成一件独立的事做，不要顺手塞进来把发布卡住。
+        name: Typecheck / Build / Test (${{ matrix.os }})
+        runs-on: ${{ matrix.os }}
+        strategy:
+            fail-fast: false
+            matrix:
+                os: [ubuntu-latest, macos-latest]
         timeout-minutes: 15
         steps:
             - uses: actions/checkout@v4
@@ -40,6 +49,7 @@ jobs:
             # npm 只认包目录里的那两个文件，不会去上级目录找 —— 漏了就是
             # npm 页面一片空白，而且没有任何报错。
             - name: Verify package contents
+              shell: bash
               run: |
                   for p in packages/*/; do
                       [ -f "$p/package.json" ] || continue

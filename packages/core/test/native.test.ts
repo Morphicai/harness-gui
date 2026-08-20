@@ -88,7 +88,21 @@ describe('可用性', () => {
 
 describe('拉起', () => {
   it('找不到外壳时抛，错误里要说清楚怎么指定路径', () => {
-    expect(() => launch('http://127.0.0.1:1/', { appPath: join(dir, '没有.app') })).toThrow(/HARNESS_GUI_APP/)
+    // 平台必须钉住：在没有壳构建的平台（CI runner 是 linux）上，
+    // unavailableReason 先返回的是「这个平台没有构建」，那条消息里不提 APP_ENV。
+    // 那也是正确行为 —— 不钉平台的话，这条用例就只在作者的机器上绿。
+    const realP = process.platform
+    const realA = process.arch
+    Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true })
+    Object.defineProperty(process, 'arch', { value: 'arm64', configurable: true })
+    try {
+      expect(() => launch('http://127.0.0.1:1/', { appPath: join(dir, '没有.app') })).toThrow(
+        /HARNESS_GUI_APP/,
+      )
+    } finally {
+      Object.defineProperty(process, 'platform', { value: realP, configurable: true })
+      Object.defineProperty(process, 'arch', { value: realA, configurable: true })
+    }
   })
 
   it('把页面地址通过 NATIVE_SDK_FRONTEND_URL 交给外壳', async () => {
