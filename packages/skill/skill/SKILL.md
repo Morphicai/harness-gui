@@ -141,8 +141,8 @@ friction to minimize.
 The server is registered as an MCP server and gated by an env var:
 
 ```bash
-npx harness-gui-skill mcp --claude-code     # prints the claude mcp add command
-npx harness-gui-skill mcp                   # prints the JSON snippet
+npx @harness-gui/skill mcp --claude-code     # prints the claude mcp add command
+npx @harness-gui/skill mcp                   # prints the JSON snippet
 ```
 
 ```jsonc
@@ -150,7 +150,7 @@ npx harness-gui-skill mcp                   # prints the JSON snippet
   "mcpServers": {
     "harness-gui": {
       "command": "npx",
-      "args": ["harness-gui-mcp"],
+      "args": ["@harness-gui/mcp"],
       "env": { "HARNESS_GUI": "on" }
     }
   }

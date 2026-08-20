@@ -1,15 +1,15 @@
-# harness-gui-skill
+# @harness-gui/skill
 
 **Teach an agent when and how to reach the human.**
 
 A playbook (`SKILL.md`) for agents that have the
-[`harness-gui-mcp`](https://www.npmjs.com/package/harness-gui-mcp) server
+[`@harness-gui/mcp`](https://www.npmjs.com/package/@harness-gui/mcp) server
 available. Installs into Claude Code, Cursor, Kiro, or anywhere that reads a
 markdown instruction file.
 
 ```bash
-npx harness-gui-skill install          # → ~/.claude/skills/harness-gui/
-npx harness-gui-skill mcp --claude-code # → the `claude mcp add` command
+npx @harness-gui/skill install          # → ~/.claude/skills/harness-gui/
+npx @harness-gui/skill mcp --claude-code # → the `claude mcp add` command
 ```
 
 User scope is the default on purpose: *whether to interrupt a person* is not a
@@ -55,7 +55,7 @@ re-ask hoping for a different answer, and never route around a decline.
 ## Programmatic use
 
 ```js
-import { readSkill, SKILL_PATH, mcpConfig } from 'harness-gui-skill'
+import { readSkill, SKILL_PATH, mcpConfig } from '@harness-gui/skill'
 ```
 
 ## License

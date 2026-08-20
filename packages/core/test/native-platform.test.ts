@@ -79,7 +79,7 @@ describe('unavailableReason —— 三种原因必须可区分', () => {
       // 不能让人去装一个还没发布的包 —— 那只会得到一个 404。
       // 壳包真的上了 npm 之后，由 scripts/sync-shell-versions.mjs 接手，
       // 那时可以把包名提示加回来，并同步改这条断言。
-      expect(r).not.toMatch(/harness-gui-shell-/)
+      expect(r).not.toMatch(/@harness-gui\/shell-/)
     }
   })
 })

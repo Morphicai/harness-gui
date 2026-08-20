@@ -38,14 +38,14 @@ const form = await ui.form({
 | | Who | How |
 |---|---|---|
 | **SDK** | any Node program — CLI, service, script | `npm i harness-gui` |
-| **MCP** | agents / LLM hosts (Claude Code, Cursor, …) | `harness-gui-mcp`, stdio transport |
+| **MCP** | agents / LLM hosts (Claude Code, Cursor, …) | `@harness-gui/mcp`, stdio transport |
 
 Agents also get a playbook — mostly about *when not to ask*, since an agent that
 confirms every step is worse than one that just does the work:
 
 ```bash
-npx harness-gui-skill install            # → ~/.claude/skills/harness-gui/
-npx harness-gui-skill mcp --claude-code  # → the `claude mcp add` command
+npx @harness-gui/skill install            # → ~/.claude/skills/harness-gui/
+npx @harness-gui/skill mcp --claude-code  # → the `claude mcp add` command
 ```
 
 ## A scenario
@@ -139,7 +139,7 @@ outright rather than quietly downgrading them to a text box.
                     │  CLI · service       │  Claude Code · …     │
                     └──────────┬───────────┴──────────┬───────────┘
                                │ SDK                  │ MCP
-                               │ import 'harness-gui' │ harness-gui-mcp
+                               │ import 'harness-gui' │ @harness-gui/mcp
                     ┌──────────▼──────────────────────▼───────────┐
                     │              harness-gui                    │
                     │          zero deps · cross-platform         │
@@ -265,9 +265,9 @@ onto "no shell, use the browser".
 
 ```
 harness-gui
-├─ harness-gui-shell-darwin-arm64   ┐
-├─ harness-gui-shell-darwin-x64     ├ optionalDependencies (planned)
-└─ harness-gui-shell-win32-x64      ┘   pinned to the exact core version
+├─ @harness-gui/shell-darwin-arm64  ┐
+├─ @harness-gui/shell-darwin-x64    ├ optionalDependencies (planned)
+└─ @harness-gui/shell-win32-x64     ┘   pinned to the exact core version
 ```
 
 The pinning matters: a mismatched shell fails as a window that opens, shows white, and never

@@ -94,7 +94,7 @@ is used and the reason is logged.
 
 ## Also in this project
 
-- `harness-gui-mcp` — the same five interactions as MCP tools, for agents and LLM hosts
+- `@harness-gui/mcp` — the same five interactions as MCP tools, for agents and LLM hosts
 
 Architecture, design rules, platform matrix and the inbound-invocation design:
 **https://github.com/Morphicai/harness-gui**

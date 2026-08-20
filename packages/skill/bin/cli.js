@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * harness-gui-skill —— 把 SKILL.md 装到各家 agent 的位置去。
+ * @harness-gui/skill —— 把 SKILL.md 装到各家 agent 的位置去。
  *
  *   install [target] [--force]   装过去
  *   mcp [--claude-code]          打印 MCP server 注册片段
@@ -24,7 +24,7 @@ function help() {
     if (t) lines.push(`  ${k.padEnd(21)} → ${t.display}`)
   }
   const rows = lines.join('\n')
-  process.stdout.write(`harness-gui-skill — teach an agent when and how to reach the human
+  process.stdout.write(`@harness-gui/skill — teach an agent when and how to reach the human
 
 Usage:
   harness-gui-skill install [target] [--force]   install SKILL.md
@@ -36,12 +36,12 @@ Targets (default claude-code — user scope, so it applies to every project):
 ${rows}
 
 Examples:
-  npx harness-gui-skill install                  # → ~/.claude/skills/harness-gui/
-  npx harness-gui-skill install claude-code-project
-  npx harness-gui-skill install cursor
-  npx harness-gui-skill mcp                      # copy into your MCP config
+  npx @harness-gui/skill install                  # → ~/.claude/skills/harness-gui/
+  npx @harness-gui/skill install claude-code-project
+  npx @harness-gui/skill install cursor
+  npx @harness-gui/skill mcp                      # copy into your MCP config
 
-The skill needs the tools to exist: register harness-gui-mcp too (see \`mcp\`),
+The skill needs the tools to exist: register @harness-gui/mcp too (see \`mcp\`),
 and set HARNESS_GUI=on — it is off by default because a server cannot tell
 whether anyone is watching.
 `)
@@ -61,7 +61,7 @@ function install(target = 'claude-code') {
   const raw = readSkill()
   writeFileSync(t.dest, t.frontmatter ? raw : stripFrontmatter(raw), 'utf-8')
   process.stdout.write(`installed → ${t.display}\n`)
-  process.stdout.write(`\nNext: register the MCP server (\`npx harness-gui-skill mcp\`) and set HARNESS_GUI=on.\n`)
+  process.stdout.write(`\nNext: register the MCP server (\`npx @harness-gui/skill mcp\`) and set HARNESS_GUI=on.\n`)
   if (target.startsWith('claude-code')) {
     process.stdout.write(`Claude Code picks up new skills on the next session.\n`)
   }
@@ -72,7 +72,7 @@ function mcp() {
   if (flags.has('--claude-code')) {
     // Claude Code 的 CLI 直接吃这条，不用手编 JSON
     process.stdout.write(
-      `claude mcp add harness-gui --env HARNESS_GUI=on -- npx harness-gui-mcp\n`,
+      `claude mcp add harness-gui --env HARNESS_GUI=on -- npx @harness-gui/mcp\n`,
     )
     return
   }

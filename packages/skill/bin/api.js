@@ -1,7 +1,7 @@
 /**
  * 以编程方式取用打包进来的 SKILL.md。
  *
- *   import { SKILL_PATH, readSkill } from 'harness-gui-skill'
+ *   import { SKILL_PATH, readSkill } from '@harness-gui/skill'
  */
 import { readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -76,7 +76,7 @@ export function mcpConfig() {
     mcpServers: {
       'harness-gui': {
         command: 'npx',
-        args: ['harness-gui-mcp'],
+        args: ['@harness-gui/mcp'],
         env: { HARNESS_GUI: 'on' },
       },
     },

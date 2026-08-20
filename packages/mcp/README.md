@@ -1,4 +1,4 @@
-# harness-gui-mcp
+# @harness-gui/mcp
 
 **MCP server that lets an agent reach the human — out of band.**
 
@@ -7,7 +7,7 @@ separate surface (a terminal, a browser tab, or a native window), so it is not s
 model can fill in for itself.
 
 ```bash
-npx harness-gui-mcp        # stdio transport
+npx @harness-gui/mcp        # stdio transport
 ```
 
 Register it with your host:
@@ -17,7 +17,7 @@ Register it with your host:
   "mcpServers": {
     "harness-gui": {
       "command": "npx",
-      "args": ["harness-gui-mcp"],
+      "args": ["@harness-gui/mcp"],
       "env": { "HARNESS_GUI": "on" }
     }
   }

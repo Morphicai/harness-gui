@@ -61,7 +61,7 @@ export interface NativeShellOptions {
 function npmShellPaths(target: ShellTarget): string[] {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const pkgJson = require.resolve(`harness-gui-shell-${target}/package.json`)
+    const pkgJson = require.resolve(`@harness-gui/shell-${target}/package.json`)
     const root = path.dirname(pkgJson)
     return process.platform === 'darwin'
       ? [path.join(root, 'Interact.app')]

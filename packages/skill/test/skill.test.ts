@@ -100,7 +100,7 @@ describe('mcpConfig', () => {
   it('给出的命令能直接跑，且显式打开 HARNESS_GUI', () => {
     const c = mcpConfig().mcpServers['harness-gui']
     expect(c.command).toBe('npx')
-    expect(c.args).toEqual(['harness-gui-mcp'])
+    expect(c.args).toEqual(['@harness-gui/mcp'])
     // 不显式给就是 off，装了 skill 却每个工具都拒绝，最难排查
     expect(c.env.HARNESS_GUI).toBe('on')
   })

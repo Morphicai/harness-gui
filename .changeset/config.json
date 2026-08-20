@@ -9,8 +9,8 @@
   "linked": [
     [
       "harness-gui",
-      "harness-gui-mcp",
-      "harness-gui-skill"
+      "@harness-gui/mcp",
+      "@harness-gui/skill"
     ]
   ],
   "ignore": []
