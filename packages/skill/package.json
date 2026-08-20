@@ -1,6 +1,6 @@
 {
   "name": "@harness-gui/skill",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Agent skill for harness-gui — teaches an agent when and how to reach the human. Install into Claude Code / Cursor / Kiro via `npx @harness-gui/skill install`.",
   "license": "MIT",
   "type": "module",
