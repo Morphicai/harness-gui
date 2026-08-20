@@ -1,0 +1,38 @@
+.{
+    .id = "dev.native_sdk.interact-client",
+    .name = "interact-client",
+    .display_name = "Interact",
+    .version = "0.1.0",
+    .icons = .{"assets/icon.png"},
+    // 只声明 macos：close_policy "hide" 在 linux 上是编译错误（GTK 没有状态栏项，
+    // 隐藏后无从找回），要支持 linux 得单独给它一条 "quit" 的构建分支。
+    .platforms = .{"macos"},
+    // 只授予通知。页面是 loopback 上的本地服务，多给一项就是多一分被它滥用的面。
+    // 真正生效的策略在 src/main.zig 的 builtin_bridge（内置命令默认全拒），这里供打包工具校验。
+    .permissions = .{"notifications"},
+    .capabilities = .{ "webview", "js_bridge", "tray" },
+    // 没有 .frontend.dev：这个壳不跑前端 dev server。
+    // 页面由 node 侧的 interact server 提供，地址在启动时经 NATIVE_SDK_FRONTEND_URL 传入。
+    .frontend = .{
+        .dist = "frontend/dist",
+        .entry = "index.html",
+        .spa_fallback = true,
+    },
+    .security = .{
+        .navigation = .{
+            // allowsOrigin 是精确字符串匹配（见 SDK src/security/root.zig），
+            // 所以端口必须写死 —— 这就是 WebChannel 需要固定端口的唯一原因。
+            // token 仍然每次会话随机，固定的只有 origin。
+            .allowed_origins = .{ "zero://app", "zero://inline", "http://127.0.0.1:47100" },
+            .external_links = .{ .action = "deny" },
+        },
+    },
+    .web_engine = "system",
+    .cef = .{ .dir = "third_party/cef/macos", .auto_install = false },
+    .windows = .{
+        // close_policy "hide"：关窗只隐藏、进程不退，这是「常驻」的全部含义。
+        // macOS 不需要 tray capability 就能用（Dock 重开路径始终存在），
+        // 但状态栏项仍然装着 —— 交互客户端平时不该占着 Dock。
+        .{ .label = "main", .title = "Interact", .width = 720, .height = 560, .restore_state = false, .close_policy = "hide" },
+    },
+}

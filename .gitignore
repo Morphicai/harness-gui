@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.log
+
+# Zig build output
+native-client/zig-out/
+native-client/.zig-cache/
+native-client/frontend/node_modules/
+native-client/frontend/dist/
+
+# 预构建壳产物由 CI 生成，不入库
+packages/shell-*/Interact.app/
+packages/shell-*/*.exe
