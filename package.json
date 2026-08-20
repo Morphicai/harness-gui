@@ -11,7 +11,8 @@
     "test": "vitest run",
     "changeset": "changeset",
     "version-packages": "changeset version && node scripts/sync-shell-versions.mjs",
-    "release": "npm run build && bash scripts/release-publish.sh"
+    "release": "npm run build && bash scripts/release-publish.sh",
+    "ci:local": "bash scripts/ci-local.sh"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
