@@ -1,6 +1,6 @@
 {
   "name": "harness-gui",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A bridge between your program and a human — notify, show, confirm, select, form. Terminal, browser, or a native window.",
   "license": "MIT",
   "type": "commonjs",
