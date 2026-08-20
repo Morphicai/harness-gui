@@ -164,18 +164,24 @@ platform.
 | **native shell** | ✅ | planned | planned |
 | scheme registration | `CFBundleURLTypes` | `HKCU\Software\Classes` | planned |
 
-Prebuilt shells ride along as `optionalDependencies` with `os`/`cpu` constraints, so npm
-installs only the one matching your machine — **no build step for consumers**. Failing to
-install one is not fatal; it maps exactly onto "no shell, use the browser".
+Point `HARNESS_GUI_APP=/path/to/Interact.app` at a shell to use it. Without one the browser
+is used and the reason is logged — `nativeShellUnavailableReason()` returns it.
+
+**Planned (not yet published):** prebuilt shells riding along as `optionalDependencies` with
+`os`/`cpu` constraints, so npm installs only the one matching your machine and consumers
+never run a build step. Failing to install one is deliberately non-fatal — it maps exactly
+onto "no shell, use the browser".
 
 ```
 harness-gui
 ├─ harness-gui-shell-darwin-arm64   ┐
-├─ harness-gui-shell-darwin-x64     ├ optionalDependencies
-└─ harness-gui-shell-win32-x64      ┘
+├─ harness-gui-shell-darwin-x64     ├ optionalDependencies (planned)
+└─ harness-gui-shell-win32-x64      ┘   pinned to the exact core version
 ```
 
-Override discovery with `HARNESS_GUI_APP=/path/to/Interact.app`.
+The pinning matters: a mismatched shell fails as a window that opens, shows white, and never
+connects. `scripts/sync-shell-versions.mjs` keeps the three versions equal to core's, and
+refuses to run if core declares shells the repo doesn't have.
 
 ### Windows notes
 
@@ -185,6 +191,32 @@ Override discovery with `HARNESS_GUI_APP=/path/to/Interact.app`.
 - **Bundle shape differs**: on macOS the binary lives at `X.app/Contents/MacOS/…` and the
   working directory must sit *outside* the bundle (the shell resolves resources relatively);
   on Windows the `.exe` is the binary. That difference is contained in one resolver.
+
+## The approval gate
+
+For tools an LLM calls, `requireApproval` is the intended entry point:
+
+```ts
+import { requireApproval } from 'harness-gui'
+
+await requireApproval({
+  action: 'delete rows',
+  title: 'Drop 12 rows?',
+  message: 'Soft delete — recoverable from history.',
+  preview: { type: 'table', columns: ['id', 'name'], rows: [...] },
+})
+// throws ApprovalDeniedError unless a human said yes
+```
+
+Gated by `HARNESS_GUI`: `off` (default), `on` (ask; proceed if no channel can reach anyone),
+`strict` (ask; refuse if no channel can reach anyone). Default off because a library cannot
+tell whether anyone is watching — under MCP stdio transport `stdin` is the protocol channel,
+not a terminal, and the daemon channel is always nominally "available", so it would spin up
+an unwatched window and wait out the timeout. In a headless environment that is not
+degrading, it is hanging.
+
+`timeout` and `cancel` are reported separately on purpose: "nobody is there" and "the answer
+is no" are different facts, and collapsing them makes failures hard to diagnose.
 
 ## Why this exists
 

@@ -2,15 +2,24 @@
   "name": "harness-gui-workspace",
   "private": true,
   "type": "commonjs",
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
-    "test": "vitest run"
+    "typecheck": "tsc -p packages/core/tsconfig.typecheck.json && tsc -p packages/mcp/tsconfig.typecheck.json",
+    "test": "vitest run",
+    "changeset": "changeset",
+    "version-packages": "changeset version && node scripts/sync-shell-versions.mjs",
+    "release": "npm run build && bash scripts/release-publish.sh"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
     "typescript": "^5.6.0",
-    "vitest": "^2.0.0",
-    "@types/node": "^22.0.0"
+    "vitest": "^4.1.11",
+    "@changesets/cli": "^2.27.0"
   },
-  "engines": { "node": ">=18" }
+  "engines": {
+    "node": ">=18"
+  }
 }

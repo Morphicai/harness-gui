@@ -1,0 +1,77 @@
+name: Release
+
+# changesets 驱动的发布流程。
+#
+# 每次推到 main，这个 workflow 二选一：
+#   (a) 有待处理的 changeset → 开/更新一个 "version packages" PR。合它才会真的改版本号。
+#   (b) 没有待处理的 changeset（= 那个 PR 刚被合）→ 把有新版本的包发到 npm。
+#
+# 怎么发一个改动：
+#   1. 在你的 PR 里跑 `npm run changeset`，声明哪些包变了、什么语义级别，
+#      把生成的 .changeset/<name>.md 一起提交
+#   2. 合进 main
+#   3. 机器人开 "version packages" PR，读完 diff 合它
+#   4. 合并触发本 workflow 的发布分支
+#
+# 手工发布（不推荐，会绕过 changelog）：本地 `npm run release`，需要 NPM_TOKEN。
+
+on:
+    push:
+        branches: [main]
+
+permissions:
+    contents: write
+    pull-requests: write
+    id-token: write        # OIDC trusted publishing 需要
+
+concurrency:
+    group: release-${{ github.ref }}
+    cancel-in-progress: false
+
+jobs:
+    release:
+        name: Version PR / Publish
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: '20'
+                  cache: 'npm'
+                  registry-url: 'https://registry.npmjs.org'
+
+            # npm ≥ 11.5 才会在 env 里没有 token 时正确协商 trusted publishing。
+            # 钉在 npm 11 线上而不是 @latest：npm 12 要求 Node ^22.22.2 || ^24.15.0 || >=26,
+            # 与上面钉的 node 20 直接 EBADENGINE。
+            - name: Upgrade npm for OIDC trusted publishing
+              run: npm install -g npm@11 && npm --version
+
+            - run: npm ci
+
+            - name: Verify dependency signatures
+              run: npm audit signatures || echo "::warning::audit signatures reported issues"
+
+            - name: Typecheck
+              run: npm run typecheck
+
+            - name: Build
+              run: npm run build
+
+            - name: Test
+              run: npm test
+
+            - name: Open Version PR or publish
+              uses: changesets/action@v1
+              with:
+                  version: npm run version-packages
+                  publish: npm run release
+                  commit: 'chore(release): version packages'
+                  title: 'chore(release): version packages'
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+                  NPM_DIST_TAG: latest

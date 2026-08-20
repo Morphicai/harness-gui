@@ -69,14 +69,17 @@ describe('unavailableReason —— 三种原因必须可区分', () => {
     expect(isAvailable()).toBe(false)
   })
 
-  it('平台支持、引擎在，只是没装壳：提示怎么装', () => {
+  it('平台支持、引擎在，只是没装壳：给一条现在就能用的出路', () => {
     setPlatform('darwin', 'arm64')
     delete process.env[APP_ENV]
     const r = unavailableReason(join(tmpdir(), 'definitely-absent.app'))
     // 本机可能真装了壳（~/.harness-gui），那种情况下这条断言不适用
     if (r) {
-      expect(r).toMatch(/harness-gui-shell-darwin-arm64/)
       expect(r).toMatch(new RegExp(APP_ENV))
+      // 不能让人去装一个还没发布的包 —— 那只会得到一个 404。
+      // 壳包真的上了 npm 之后，由 scripts/sync-shell-versions.mjs 接手，
+      // 那时可以把包名提示加回来，并同步改这条断言。
+      expect(r).not.toMatch(/harness-gui-shell-/)
     }
   })
 })

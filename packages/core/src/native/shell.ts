@@ -165,7 +165,7 @@ export function unavailableReason(appPath?: string): string | undefined {
     return `未检测到 Edge WebView2 Runtime，原生壳会白屏，改用浏览器通道（装上 WebView2 或用 ${APP_ENV} 指定自带运行时的壳）`
   }
   if (!resolveExecutable(appPath)) {
-    return `没找到原生壳（可用 ${APP_ENV} 指定，或安装 harness-gui-shell-${target}），将使用浏览器通道`
+    return `没找到原生壳（用 ${APP_ENV} 指定其位置），将使用浏览器通道`
   }
   return undefined
 }

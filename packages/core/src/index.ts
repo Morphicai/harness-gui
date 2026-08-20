@@ -25,6 +25,7 @@ export { Daemon, type DaemonOptions, type NativeOptions } from './daemon/server.
 export {
   NATIVE_PORT,
   isAvailable as nativeShellAvailable,
+  unavailableReason as nativeShellUnavailableReason,
   resolveExecutable as resolveNativeShell,
   launch as launchNativeShell,
   type NativeShell,
@@ -33,6 +34,17 @@ export {
 export { DaemonChannel, type DaemonChannelOptions } from './daemon/client.js'
 export { socketPath } from './daemon/paths.js'
 export { PROTOCOL_VERSION, type DaemonStatus } from './daemon/protocol.js'
+export {
+  requireApproval,
+  askText,
+  showToUser,
+  interactMode,
+  getUi,
+  setUiForTest,
+  ApprovalDeniedError,
+  type InteractMode,
+  type ApprovalRequest,
+} from './approval.js'
 
 import { Interact } from './registry.js'
 import { TtyChannel } from './channels/tty.js'

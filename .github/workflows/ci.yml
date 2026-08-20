@@ -1,0 +1,52 @@
+name: CI
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+    workflow_dispatch:
+
+concurrency:
+    group: ci-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    check:
+        name: Typecheck / Build / Test
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: '20'
+                  cache: 'npm'
+
+            - run: npm ci
+
+            - name: Typecheck
+              run: npm run typecheck
+
+            # 必须先 build：MCP 包的用例 import 的是 `harness-gui` 包名
+            # （→ core 的 dist），不是 ../src。见 packages/mcp/test/tools.test.ts 顶部注释。
+            - name: Build
+              run: npm run build
+
+            - name: Test
+              run: npm test
+
+            # 发布前的最后一道机械检查：tarball 里必须有 README 和 LICENSE。
+            # npm 只认包目录里的那两个文件，不会去上级目录找 —— 漏了就是
+            # npm 页面一片空白，而且没有任何报错。
+            - name: Verify package contents
+              run: |
+                  for p in packages/*/; do
+                      [ -f "$p/package.json" ] || continue
+                      node -p "require('./$p/package.json').private === true" | grep -q true && continue
+                      out=$(cd "$p" && npm pack --dry-run 2>&1)
+                      for f in README.md LICENSE; do
+                          echo "$out" | grep -q "$f" || { echo "::error::$p 的 tarball 里缺 $f"; exit 1; }
+                      done
+                      echo "  ✓ $p"
+                  done

@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    /* node16 而不是 core 用的 node10：MCP SDK 只通过 exports map 暴露
+       `@modelcontextprotocol/sdk/server/mcp.js` 这类子路径，node10 解析不到。
+       package.json 没有 "type":"module"，所以仍然产出 CJS。 */
+    "module": "node16",
+    "moduleResolution": "node16",
+    "declaration": true,
+    "sourceMap": true,
+    "outDir": "dist",
+    "rootDir": ".",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "lib": ["es2022"]
+  },
+  "include": ["src/**/*"],
+  "exclude": ["dist", "node_modules", "test"]
+}

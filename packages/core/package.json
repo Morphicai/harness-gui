@@ -6,16 +6,33 @@
   "type": "commonjs",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
-  "bin": { "harness-gui-daemon": "dist/src/daemon/bin.js" },
-  "files": ["dist"],
-  "scripts": { "build": "tsc" },
-  "keywords": ["human-in-the-loop", "cli", "prompt", "confirm", "approval", "agent", "mcp"],
-  "repository": { "type": "git", "url": "git+https://github.com/Morphicai/harness-gui.git", "directory": "packages/core" },
-  "homepage": "https://github.com/Morphicai/harness-gui#readme",
-  "optionalDependencies": {
-    "harness-gui-shell-darwin-arm64": "0.1.0",
-    "harness-gui-shell-darwin-x64": "0.1.0",
-    "harness-gui-shell-win32-x64": "0.1.0"
+  "bin": {
+    "harness-gui-daemon": "dist/src/daemon/bin.js"
   },
-  "engines": { "node": ">=18" }
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [
+    "human-in-the-loop",
+    "cli",
+    "prompt",
+    "confirm",
+    "approval",
+    "agent",
+    "mcp"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Morphicai/harness-gui.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/Morphicai/harness-gui#readme",
+  "engines": {
+    "node": ">=18"
+  }
 }

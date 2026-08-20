@@ -1,0 +1,21 @@
+{
+  "name": "harness-gui-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for harness-gui — let an agent notify, show, confirm, select and ask a human, out of band.",
+  "license": "MIT",
+  "type": "commonjs",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "bin": { "harness-gui-mcp": "dist/src/bin.js" },
+  "files": ["dist", "README.md", "LICENSE"],
+  "scripts": { "build": "tsc" },
+  "keywords": ["mcp", "model-context-protocol", "human-in-the-loop", "approval", "agent"],
+  "repository": { "type": "git", "url": "git+https://github.com/Morphicai/harness-gui.git", "directory": "packages/mcp" },
+  "homepage": "https://github.com/Morphicai/harness-gui#readme",
+  "dependencies": {
+    "harness-gui": "0.1.0",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.23.0"
+  },
+  "engines": { "node": ">=18" }
+}
