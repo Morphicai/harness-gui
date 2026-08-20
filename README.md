@@ -104,6 +104,53 @@ Otherwise the same `show` is a chart in a browser and a blank space in a termina
 caller has no idea it lost anything. Throw at development time rather than silently drop
 content at runtime.
 
+## Hosts
+
+`browser`, `native` and `electron` are three *carriers of the same page*, not three
+implementations. Rule 1 above applies to all of them: protocol, page and form logic exist
+once, in the web channel.
+
+| Host | Status | Buys you | Costs |
+|---|---|---|---|
+| **browser** | ✅ | zero install, every platform, nothing to distribute | no system notifications, no tray, closing the tab ends it |
+| **native** (Zig) | ✅ macOS | notifications, tray, survives window close; **tiny** (3–8 MB) | built per platform; **cannot run Node inside the shell** |
+| **electron** | planned | all of the above **+ Node executing inside the shell** | ~150 MB+, packaged per platform |
+
+Electron earns its place for exactly one reason: the shell itself can run Node, so work
+triggered from the UI can happen in-shell instead of being routed back to the caller. If
+you don't need that, native is a twentyfold size difference in your favour.
+
+## Inbound invocation
+
+Everything above is outbound — your program reaches for a human. The reverse direction is
+a web page (or an agent running in one) handing a task to the local install.
+
+A page can talk to a running install over loopback, but it cannot *start* one. That gap is
+what a registered URL scheme closes:
+
+```
+page ──① try loopback ──► running? ──yes──► HTTP/WS, done
+     └─② harness-gui://wake ──► OS launches it ──► ③ retry loopback
+```
+
+**Payloads do not travel in the URL.** URLs land in browser history, system logs and crash
+reports; the scheme carries a wake-up and a short-lived one-shot handshake code, nothing
+more.
+
+A registered scheme is invocable by **any** page on that machine, so the caller is treated
+as hostile by construction: its origin is displayed *in the UI* rather than kept as
+metadata, an unknown origin has to be paired once by the human before its requests render,
+and **the caller can never describe what to execute** — only reference a task the human
+already installed locally. Allowing otherwise would make a single URL remote code
+execution, which matters most precisely on the host that can run Node.
+
+The scheme brings in a *request*, never an instruction — the same reason approval has to be
+out-of-band (point 3 below): a model — or a web page — can construct a request; neither
+can construct a human's approval.
+
+Remote agents (a machine elsewhere reaching a specific person) cannot use a scheme at all
+and need an outbound-dialled relay instead. Design sketch: `docs/hosts-and-invocation.md`.
+
 ## Platforms
 
 The core and the first three channels are platform-independent. The native shell ships per
@@ -115,6 +162,7 @@ platform.
 | web channel | ✅ | ✅ | ✅ |
 | daemon IPC | Unix socket | named pipe | Unix socket |
 | **native shell** | ✅ | planned | planned |
+| scheme registration | `CFBundleURLTypes` | `HKCU\Software\Classes` | planned |
 
 Prebuilt shells ride along as `optionalDependencies` with `os`/`cpu` constraints, so npm
 installs only the one matching your machine — **no build step for consumers**. Failing to
