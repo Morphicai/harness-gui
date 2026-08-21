@@ -10,7 +10,7 @@
     "typecheck": "tsc -p packages/core/tsconfig.typecheck.json && tsc -p packages/mcp/tsconfig.typecheck.json && tsc -p packages/skill/tsconfig.typecheck.json",
     "test": "vitest run",
     "changeset": "changeset",
-    "version-packages": "changeset version && node scripts/sync-shell-versions.mjs",
+    "version-packages": "changeset version && node scripts/sync-shell-versions.mjs && npm install --package-lock-only --ignore-scripts",
     "release": "npm run build && bash scripts/release-publish.sh",
     "ci:local": "bash scripts/ci-local.sh",
     "precommit": "bash scripts/ci-local.sh > /tmp/harness-gui-ci.log 2>&1 || { tail -40 /tmp/harness-gui-ci.log; echo; echo \"✗ ci:local 失败，完整日志 /tmp/harness-gui-ci.log\"; exit 1; }"
