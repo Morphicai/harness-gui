@@ -1,6 +1,6 @@
 {
   "name": "@harness-gui/shell-win32-x64",
-  "version": "0.0.0",
+  "version": "0.4.0",
   "description": "Prebuilt harness-gui native shell for win32-x64. Installed automatically as an optionalDependency of harness-gui; not useful on its own.",
   "license": "MIT",
   "os": [
