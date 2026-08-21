@@ -12,16 +12,40 @@ import { NATIVE_PORT, resolveExecutable, isAvailable, launch } from '../src/nati
 
 let dir: string
 const saved = process.env.HARNESS_GUI_APP
+const savedHome = process.env.HOME
+const savedLocal = process.env.LOCALAPPDATA
+const savedProg = process.env.ProgramFiles
 
 beforeEach(() => {
   dir = join(tmpdir(), `interact-native-${Date.now()}-${Math.random().toString(36).slice(2)}`)
   mkdirSync(dir, { recursive: true })
   delete process.env.HARNESS_GUI_APP
+  /*
+   * HOME 指到空目录，把 installPaths() 的标准位置架空。
+   *
+   * 不这么做的话，这组用例只在「跑测试的机器上没装壳」时才通过 ——
+   * 一旦 ~/.harness-gui/Interact.app 真的存在（开发者自己用上了这个库就会），
+   * resolveExecutable(不存在的路径) 会一路落到那个真壳上，于是断言 undefined 的
+   * 用例集体变红。而 CI runner 永远不会装壳，所以这种腐坏只会在本机出现，
+   * 排查时极容易怀疑成「我改坏了什么」。
+   *
+   * Windows 的两个前缀同理架空。
+   */
+  process.env.HOME = join(dir, 'empty-home')
+  mkdirSync(process.env.HOME, { recursive: true })
+  delete process.env.LOCALAPPDATA
+  delete process.env.ProgramFiles
 })
 afterEach(() => {
   rmSync(dir, { recursive: true, force: true })
   if (saved === undefined) delete process.env.HARNESS_GUI_APP
   else process.env.HARNESS_GUI_APP = saved
+  if (savedHome === undefined) delete process.env.HOME
+  else process.env.HOME = savedHome
+  if (savedLocal === undefined) delete process.env.LOCALAPPDATA
+  else process.env.LOCALAPPDATA = savedLocal
+  if (savedProg === undefined) delete process.env.ProgramFiles
+  else process.env.ProgramFiles = savedProg
 })
 
 /** 造一个形状合规的 .app */
@@ -31,6 +55,31 @@ function fakeApp(name = 'Interact.app', bin = 'native-client'): string {
   writeFileSync(join(app, 'Contents', 'MacOS', bin), '#!/bin/sh\nexit 0\n', { mode: 0o755 })
   return app
 }
+
+/**
+ * 这组用例必须与「本机装没装壳」无关。
+ *
+ * 单独立一条：上面 beforeEach 里那段 HOME 架空是唯一的保障，而它很容易被后人
+ * 当成多余的仪式删掉 —— 删掉之后在没装壳的机器（含所有 CI runner）上仍然全绿，
+ * 只在装了壳的开发机上才炸。这条用例把那个保障本身钉住。
+ */
+describe('与环境隔离', () => {
+  it('即使标准位置真的有壳，resolveExecutable 也不该看见它', () => {
+    // 在被架空的 HOME 下造一个「标准位置的壳」
+    const home = process.env.HOME!
+    const planted = join(home, '.harness-gui', 'Interact.app', 'Contents', 'MacOS')
+    mkdirSync(planted, { recursive: true })
+    writeFileSync(join(planted, 'native-client'), '#!/bin/sh\nexit 0\n', { mode: 0o755 })
+
+    // 它**应该**被找到 —— 说明 installPaths() 真的在看 HOME，架空是有效的手段
+    expect(resolveExecutable()).toContain(home)
+
+    // 而换一个空 HOME，就什么都找不到 —— 说明用例没有依赖真实 home
+    process.env.HOME = join(dir, 'another-empty')
+    mkdirSync(process.env.HOME, { recursive: true })
+    expect(resolveExecutable()).toBeUndefined()
+  })
+})
 
 describe('定位可执行文件', () => {
   it('给 .app 时钻进 Contents/MacOS', () => {
