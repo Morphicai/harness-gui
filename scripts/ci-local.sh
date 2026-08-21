@@ -23,7 +23,7 @@ step 'test'
 npm test
 
 step 'pack 完整性（README / LICENSE 必须在 tarball 里）'
-for p in packages/*/; do
+for p in packages/*/ shells/*/; do
     [ -f "$p/package.json" ] || continue
     node -p "require('./$p/package.json').private === true" | grep -q true && continue
     out=$(cd "$p" && npm pack --dry-run 2>&1)

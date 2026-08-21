@@ -26,7 +26,9 @@ REMAINING=()
 SKIPPED=()
 ALREADY=()
 
-for pkg in packages/*/; do
+# shells/ 里的壳包刻意不在 npm workspace 里（os/cpu 与 workspace 成员身份冲突，
+# 见 scripts/sync-shell-versions.mjs 顶部），所以这里要显式带上它们。
+for pkg in packages/*/ shells/*/; do
     [ -f "$pkg/package.json" ] || continue
     is_private=$(node -p "require('./$pkg/package.json').private === true" 2>/dev/null || echo false)
     if [ "$is_private" = "true" ]; then
@@ -44,6 +46,18 @@ for pkg in packages/*/; do
             continue
         fi
     fi
+    # 壳包必须真的带着二进制。npm pack 对 files 里不存在的条目是**静默跳过**，
+    # 所以缺产物时会发出一个「装上了但里面没有壳」的包 —— 而 core 会照常降级到
+    # 浏览器，于是没有任何人会发现。必须在发布前拦住。
+    case "$pkg" in
+        shells/*)
+            expected=$(node -p "require('./$pkg/package.json').files.find(f => /Interact\\.(app|exe)$/.test(f))" 2>/dev/null)
+            if [ -z "$expected" ] || [ ! -e "$pkg/$expected" ]; then
+                echo "::error::$pkg 里没有 $expected —— 壳包不能空着发（CI 的 artifact 没下载到？）"
+                exit 1
+            fi
+            ;;
+    esac
     ( cd "$pkg" && npm pack --pack-destination "$TARBALL_DIR" >/dev/null )
 done
 ls -la "$TARBALL_DIR" 2>/dev/null || true

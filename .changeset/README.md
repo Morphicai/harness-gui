@@ -6,8 +6,11 @@
 `.changeset/*.md` 一起提交。合进 `main` 后机器人开一个 "version packages" PR，
 读完 diff 合它，就发布。
 
-**壳包（`@harness-gui/shell-*`）落地后要挪到 `fixed`**，不是 `linked`：
-`harness-gui` 的 `optionalDependencies` 按精确版本钉住它们，版本必须永远相等。
+**壳包（`@harness-gui/shell-*`）不由 changesets 管**，它们在 `shells/` 而不是
+`packages/`，也就不在 npm workspace 里 —— 因为 `os`/`cpu` 和 workspace 成员身份冲突
+（npm 会对每个 workspace 包检查 os/cpu，在 arm64 上装 darwin-x64 那个直接
+`EBADPLATFORM`）。它们的版本由 `scripts/sync-shell-versions.mjs` 从 core 读，
+发布由 `release-publish.sh` 一并扫 `shells/`。
 
 ## 为什么三个包不共享版本线
 
@@ -22,6 +25,7 @@
 `@harness-gui/mcp` 会跟着 `harness-gui` 走，但那是因为它**真的依赖**后者，
 由 `updateInternalDependencies` 自动处理，不需要 `linked`。
 
-**壳包（`@harness-gui/shell-*`）是另一回事，那些要 `fixed`**：
-`harness-gui` 的 `optionalDependencies` 按精确版本钉住它们，版本必须永远相等 ——
-漂移的失败形态是「窗口起来了、白屏、永远连不上」。
+**壳包（`@harness-gui/shell-*`）走另一条路**：不在 workspace 里、不由 changesets 管，
+版本由 `sync-shell-versions.mjs` 从 core 读并强制相等 —— `harness-gui` 的
+`optionalDependencies` 按精确版本钉住它们，漂移的失败形态是「窗口起来了、白屏、
+永远连不上」。

@@ -1,0 +1,124 @@
+name: Build native shells
+
+# 构建预编译原生壳，产物给 release 流程用。
+#
+# 为什么单独一条流水线：壳只有在需要发布时才用得上，而它要多平台 runner、
+# 装 Native SDK、跑真实编译 —— 挂进每次 push 的 CI 会把最常跑的那条拖慢好几倍。
+#
+# 配方来自 docs/building-the-shell.md，那份是**在 darwin-arm64 上实测过的**。
+# 改这里之前先读它，尤其是「必须对齐的两个常量」那节。
+#
+# 手动触发，或被 release 流程 workflow_call 调用。
+
+on:
+    workflow_dispatch:
+    workflow_call:
+        outputs:
+            artifact-prefix:
+                description: Artifact name prefix for the built shells
+                value: shell
+
+permissions:
+    contents: read
+
+jobs:
+    darwin:
+        # 两个 darwin 架构在**同一台 runner** 上出：zig 交叉编译，sysroot 由
+        # `xcrun --show-sdk-path` 提供。已在 arm64 机器上编出 x86_64 验证过，
+        # 所以不需要 Intel runner。
+        name: darwin (${{ matrix.target }})
+        runs-on: macos-latest
+        timeout-minutes: 30
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - target: aarch64-macos
+                      pkg: darwin-arm64
+                    - target: x86_64-macos
+                      pkg: darwin-x64
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: '22'
+
+            # zig **不用单独装** —— @native-sdk/cli 自带
+            # ~/.native/toolchains/zig-0.16.0/zig。先装 SDK 就够了。
+            - name: Install Native SDK (brings its own zig)
+              run: npm i -g @native-sdk/cli
+
+            - name: Locate toolchain
+              id: tc
+              run: |
+                  ZIG="$HOME/.native/toolchains/zig-0.16.0/zig"
+                  test -x "$ZIG" || { echo "::error::zig 不在预期位置 $ZIG —— @native-sdk/cli 的布局变了，读 docs/building-the-shell.md"; exit 1; }
+                  echo "zig=$ZIG" >> "$GITHUB_OUTPUT"
+                  "$ZIG" version
+                  # build.zig 按 $HOME/{.local,.npm-global,...}/lib/node_modules/@native-sdk/cli 找；
+                  # runner 上 npm 全局前缀不一定是那几个，所以显式给
+                  SDK="$(npm root -g)/@native-sdk/cli"
+                  test -f "$SDK/build.zig" || { echo "::error::Native SDK 不在 $SDK"; exit 1; }
+                  echo "sdk=$SDK" >> "$GITHUB_OUTPUT"
+
+            - name: Build (unsigned)
+              env:
+                  ZIG: ${{ steps.tc.outputs.zig }}
+                  NATIVE_SDK_PATH: ${{ steps.tc.outputs.sdk }}
+                  # 暂不签名。签名要 Developer ID，公证还会把二进制上传给 Apple ——
+                  # 那是外发行为，必须显式开启，不能因为 secret 刚好齐了就自动做。
+                  CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+              run: node native-client/scripts/build-mac.mjs --target=${{ matrix.target }}
+
+            - name: Verify the artifact is what we think it is
+              run: |
+                  APP="native-client/dist-${{ matrix.target }}/Interact.app"
+                  BIN="$APP/Contents/MacOS/native-client"
+                  test -f "$BIN" || { echo "::error::没有产物 $BIN"; exit 1; }
+                  file "$BIN"
+                  # 架构必须对得上包名，否则 npm 会把 x86_64 的壳装到 arm64 机器上
+                  case "${{ matrix.pkg }}" in
+                    darwin-arm64) file "$BIN" | grep -q arm64  || { echo "::error::架构不是 arm64"; exit 1; };;
+                    darwin-x64)   file "$BIN" | grep -q x86_64 || { echo "::error::架构不是 x86_64"; exit 1; };;
+                  esac
+                  # 自包含性：除系统 framework 外不该链任何东西，否则用户还得装别的
+                  if otool -L "$BIN" | tail -n +2 | grep -vE '/System/Library/|/usr/lib/lib(System|objc)'; then
+                    echo "::error::链到了非系统库 —— 壳就不再是自包含的了"; exit 1
+                  fi
+                  # 编译期常量必须与 core 的 NATIVE_PORT 一致，不然是白屏且无报错
+                  PORT=$(grep -oE 'NATIVE_PORT = [0-9]+' packages/core/src/native/shell.ts | grep -oE '[0-9]+')
+                  grep -q "127.0.0.1:$PORT" native-client/src/main.zig || {
+                    echo "::error::main.zig 的 interact_origin 与 core 的 NATIVE_PORT=$PORT 不一致"; exit 1; }
+
+            - uses: actions/upload-artifact@v4
+              with:
+                  name: shell-${{ matrix.pkg }}
+                  path: native-client/dist-${{ matrix.target }}/Interact.app
+                  if-no-files-found: error
+
+    windows:
+        # 还没验过。Windows 上 daemon 走命名管道、壳要 WebView2，两样都从没在
+        # CI 上跑过 —— 所以这个 job 允许失败，不挡住 darwin 那两个产物。
+        # 真正跑通之后再把 continue-on-error 摘掉。
+        name: win32-x64 (unverified)
+        runs-on: windows-latest
+        continue-on-error: true
+        timeout-minutes: 30
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: '22'
+            - run: npm i -g @native-sdk/cli
+            - name: Build
+              shell: bash
+              run: |
+                  ZIG="$HOME/.native/toolchains/zig-0.16.0/zig"
+                  test -x "$ZIG" || ZIG="$HOME/.native/toolchains/zig-0.16.0/zig.exe"
+                  test -x "$ZIG" || { echo "::warning::zig 不在预期位置，Windows 配方还没验过"; exit 1; }
+                  cd native-client && "$ZIG" build -Doptimize=ReleaseFast
+            - name: Collect
+              shell: bash
+              run: |
+                  find native-client/zig-out -name '*.exe' -print

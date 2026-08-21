@@ -11,6 +11,16 @@
  * 但 core 里那三行精确依赖得有人来写。
  *
  * 壳包还不存在时这个脚本是空转 —— 那是预期状态，不是错误。
+ *
+ * ## 为什么壳包在 shells/ 而不是 packages/（= 不在 npm workspace 里）
+ *
+ * **`os`/`cpu` 和 workspace 成员身份是冲突的。** npm 会 link 每一个 workspace 包
+ * 并对它检查 os/cpu，于是在 arm64 机器上 `npm ci` 撞到 darwin-x64 那个就直接
+ * `EBADPLATFORM` 失败 —— 而那恰恰是 os/cpu 该起作用的地方（只装匹配的那个），
+ * 只不过对 workspace 成员它变成了硬错误。
+ *
+ * 移出 workspace 之后不再需要 changesets 管它们：版本由本脚本从 core 读，
+ * 发布由 release-publish.sh 一并扫 shells/。少一层间接，也少一个会不同步的地方。
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { join, dirname } from 'node:path'
@@ -22,10 +32,10 @@ const core = JSON.parse(readFileSync(corePath, 'utf8'))
 const version = core.version
 
 const targets = ['darwin-arm64', 'darwin-x64', 'win32-x64']
-const present = targets.filter(t => existsSync(join(root, `packages/shell-${t}/package.json`)))
+const present = targets.filter(t => existsSync(join(root, `shells/${t}/package.json`)))
 
 if (present.length === 0) {
-  console.log('sync-shell-versions: 还没有壳包，跳过')
+  console.log('sync-shell-versions: shells/ 下还没有壳包，跳过')
   if (core.optionalDependencies) {
     // 壳包不存在却声明了依赖 → 每次安装都会打一串 404
     console.error('sync-shell-versions: core 声明了 optionalDependencies 但壳包不在仓库里')
@@ -36,7 +46,7 @@ if (present.length === 0) {
 
 const optional = {}
 for (const t of present) {
-  const p = join(root, `packages/shell-${t}/package.json`)
+  const p = join(root, `shells/${t}/package.json`)
   const pkg = JSON.parse(readFileSync(p, 'utf8'))
   if (pkg.version !== version) {
     pkg.version = version

@@ -15,6 +15,10 @@
  *   node scripts/build-mac.mjs                  构建 + 签名
  *   node scripts/build-mac.mjs --notarize       构建 + 签名 + 公证 + 装订
  *   node scripts/build-mac.mjs --agent-app      纯菜单栏形态（无 Dock 图标）
+ *   node scripts/build-mac.mjs --target=x86_64-macos    交叉编译到 Intel
+ *
+ * 两个 darwin 架构可以在**同一台机器**上出：zig 交叉编译，sysroot 由
+ * `xcrun --show-sdk-path` 提供。已在 arm64 机器上编出 x86_64 验证过。
  *   CSC_IDENTITY_AUTO_DISCOVERY=false node scripts/build-mac.mjs   不签名
  */
 
@@ -31,6 +35,11 @@ const ZIG = process.env.ZIG ?? join(process.env.HOME, '.native/toolchains/zig-0.
 
 const wantNotarize = process.argv.includes('--notarize')
 const agentApp = process.argv.includes('--agent-app')
+/** 目标三元组，如 x86_64-macos；不给则编本机架构 */
+const target = (process.argv.find(a => a.startsWith('--target=')) ?? '').slice('--target='.length) ||
+  process.env.TARGET || ''
+/** 产物目录后缀，避免两个架构互相覆盖 */
+const outSuffix = target ? '-' + target : ''
 
 const log = (tag, msg) => console.log(`[${tag}] ${msg}`)
 const run = (cmd, args, opts = {}) =>
@@ -89,13 +98,16 @@ function main() {
   const bundleId = readManifestField(MANIFEST, 'id') ?? 'dev.native_sdk.interact-client'
 
   // ---- 1. 编译 release ----
-  log('build', 'zig build -Doptimize=ReleaseFast')
-  run(ZIG, ['build', '-Doptimize=ReleaseFast'])
+  const zigArgs = ['build', '-Doptimize=ReleaseFast']
+  if (target) zigArgs.push(`-Dtarget=${target}`)
+  log('build', `zig ${zigArgs.join(' ')}`)
+  run(ZIG, zigArgs)
   const binPath = join(APP_DIR, 'zig-out/bin/native-client')
   if (!existsSync(binPath)) throw new Error(`构建产物不存在：${binPath}`)
 
   // ---- 2. 组装 .app（发布不做增量，确保产物干净）----
-  const outDir = join(APP_DIR, 'dist')
+  // 目标不同时分目录：zig-out/bin 会被下一次构建覆盖，两个架构同放一处必然串味
+  const outDir = join(APP_DIR, 'dist' + outSuffix)
   rmSync(outDir, { recursive: true, force: true })
   mkdirSync(outDir, { recursive: true })
   const { appPath } = buildAppBundle({

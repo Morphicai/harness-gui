@@ -1,0 +1,26 @@
+{
+  "name": "@harness-gui/shell-darwin-x64",
+  "version": "0.0.0",
+  "description": "Prebuilt harness-gui native shell for darwin-x64. Installed automatically as an optionalDependency of harness-gui; not useful on its own.",
+  "license": "MIT",
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "files": [
+    "README.md",
+    "LICENSE",
+    "Interact.app"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Morphicai/harness-gui.git",
+    "directory": "shells/darwin-x64"
+  },
+  "homepage": "https://github.com/Morphicai/harness-gui#readme",
+  "publishConfig": {
+    "access": "public"
+  }
+}

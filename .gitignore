@@ -4,13 +4,15 @@ dist/
 
 # Zig build output
 native-client/zig-out/
+# 交叉编译产物按 target 分目录（dist-x86_64-macos 等）
+native-client/dist-*/
 native-client/.zig-cache/
 native-client/frontend/node_modules/
 native-client/frontend/dist/
 
-# 预构建壳产物由 CI 生成，不入库
-packages/shell-*/Interact.app/
-packages/shell-*/*.exe
+# 预构建壳产物由 CI 塞进来，不入库
+shells/*/Interact.app/
+shells/*/*.exe
 
 # npm pack / release 脚本的产物。误提交 tarball 等于把整个包连同它当时的
 # 全部内容钉进公开历史里 —— 而 git 历史删不掉。
