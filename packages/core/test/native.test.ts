@@ -65,19 +65,28 @@ function fakeApp(name = 'Interact.app', bin = 'native-client'): string {
  */
 describe('与环境隔离', () => {
   it('即使标准位置真的有壳，resolveExecutable 也不该看见它', () => {
-    // 在被架空的 HOME 下造一个「标准位置的壳」
-    const home = process.env.HOME!
-    const planted = join(home, '.harness-gui', 'Interact.app', 'Contents', 'MacOS')
-    mkdirSync(planted, { recursive: true })
-    writeFileSync(join(planted, 'native-client'), '#!/bin/sh\nexit 0\n', { mode: 0o755 })
+    // installPaths() 只在 darwin / win32 上有内容，所以平台要钉住 ——
+    // 否则这条用例在 Linux runner 上拿到 undefined 而红，
+    // 而它想验的东西和当前平台无关。
+    const realP = process.platform
+    Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true })
+    try {
+      // 在被架空的 HOME 下造一个「标准位置的壳」
+      const home = process.env.HOME!
+      const planted = join(home, '.harness-gui', 'Interact.app', 'Contents', 'MacOS')
+      mkdirSync(planted, { recursive: true })
+      writeFileSync(join(planted, 'native-client'), '#!/bin/sh\nexit 0\n', { mode: 0o755 })
 
-    // 它**应该**被找到 —— 说明 installPaths() 真的在看 HOME，架空是有效的手段
-    expect(resolveExecutable()).toContain(home)
+      // 它**应该**被找到 —— 说明 installPaths() 真的在看 HOME，架空是有效的手段
+      expect(resolveExecutable()).toContain(home)
 
-    // 而换一个空 HOME，就什么都找不到 —— 说明用例没有依赖真实 home
-    process.env.HOME = join(dir, 'another-empty')
-    mkdirSync(process.env.HOME, { recursive: true })
-    expect(resolveExecutable()).toBeUndefined()
+      // 而换一个空 HOME，就什么都找不到 —— 说明用例没有依赖真实 home
+      process.env.HOME = join(dir, 'another-empty')
+      mkdirSync(process.env.HOME, { recursive: true })
+      expect(resolveExecutable()).toBeUndefined()
+    } finally {
+      Object.defineProperty(process, 'platform', { value: realP, configurable: true })
+    }
   })
 })
 

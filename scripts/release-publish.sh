@@ -35,6 +35,27 @@ for pkg in packages/*/ shells/*/; do
         echo "  - skipped (private): $pkg"
         continue
     fi
+    # 壳包的版本必须等于 core，**这条要在「已在 registry 上」之前查**。
+    #
+    # 0.0.0 已经被误发过一次：那次跑在「没有待处理 changeset」的发布模式下，
+    # 仓库里壳包还是占位的 0.0.0、产物也已放好，于是照发。如果这条检查排在
+    # 「已在 registry 上」之后，占位版本会因为「已经发过了」而被静默跳过 ——
+    # 恰好错过导致问题的那个情形。
+    #
+    # 注意变量一律用 ${} 包起来：`$var` 紧跟全角标点时，bash 3.2（macOS 自带）
+    # 会把 UTF-8 的后续字节算进变量名，于是 set -u 下报 unbound variable。
+    case "$pkg" in
+        shells/*)
+            core_v=$(node -p "require('./packages/core/package.json').version")
+            shell_v=$(node -p "require('./$pkg/package.json').version")
+            if [ "${shell_v}" != "${core_v}" ]; then
+                echo "::error::${pkg} 版本是 ${shell_v}，而 harness-gui 是 ${core_v} —— 壳包版本必须精确相等"
+                echo "::error::core 的 optionalDependencies 按精确版本钉住它们，对不上的失败形态是白屏、无报错"
+                echo "::error::若 ${shell_v} 是占位版本，说明这次跑在发布模式但没有版本变更；先合 version PR"
+                exit 1
+            fi
+            ;;
+    esac
     # 当前版本已经在 registry 上就别 pack —— 省一次往返，也避免「文档改动」这类
     # 没产生版本变化的提交被 changesets 的 publish 步骤报成「一个包都没发」。
     pkg_name=$(node -p "require('./$pkg/package.json').name" 2>/dev/null)
