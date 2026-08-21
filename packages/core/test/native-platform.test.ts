@@ -5,7 +5,7 @@
  * 平台没构建 / 缺 WebView2 / 没装壳包，三种原因的排查方向完全不同，
  * 混成一句「不可用」等于没说。
  */
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach } from 'vitest'
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -19,6 +19,20 @@ function setPlatform(platform: string, arch = process.arch) {
   Object.defineProperty(process, 'platform', { value: platform, configurable: true })
   Object.defineProperty(process, 'arch', { value: arch, configurable: true })
 }
+
+beforeEach(() => {
+  /*
+   * 把 installPaths() 的标准位置架空：HOME 指到空目录，Windows 的两个前缀清掉。
+   *
+   * 不这么做的话，凡是断言「找不到壳」的用例都得挂一个 `if (r)` 逃生口 ——
+   * 而那意味着在**真装了壳的机器上它们什么都不断言**，看着绿其实空跑。
+   * 空跑的用例比红的用例更坏：红的会被修，空跑的不会被发现。
+   */
+  const home = mkdtempSync(join(tmpdir(), 'hg-home-'))
+  process.env.HOME = home
+  delete process.env.LOCALAPPDATA
+  delete process.env.ProgramFiles
+})
 
 afterEach(() => {
   setPlatform(realPlatform, realArch)
@@ -73,14 +87,13 @@ describe('unavailableReason —— 三种原因必须可区分', () => {
     setPlatform('darwin', 'arm64')
     delete process.env[APP_ENV]
     const r = unavailableReason(join(tmpdir(), 'definitely-absent.app'))
-    // 本机可能真装了壳（~/.harness-gui），那种情况下这条断言不适用
-    if (r) {
-      expect(r).toMatch(new RegExp(APP_ENV))
-      // 不能让人去装一个还没发布的包 —— 那只会得到一个 404。
-      // 壳包真的上了 npm 之后，由 scripts/sync-shell-versions.mjs 接手，
-      // 那时可以把包名提示加回来，并同步改这条断言。
-      expect(r).not.toMatch(/@harness-gui\/shell-/)
-    }
+    // 无条件断言 —— HOME 已被架空，所以「找不到壳」是确定的事实，
+    // 不再需要 `if (r)` 那种「本机装了壳就不检查」的逃生口
+    expect(r).toBeTruthy()
+    expect(r).toMatch(new RegExp(APP_ENV))
+    // 别让人去装一个还没发布的包 —— 那只会得到 404。壳包上了 npm 之后
+    // 可以把包名提示加回来，并同步改这条断言。
+    expect(r).not.toMatch(/@harness-gui\/shell-/)
   })
 })
 
