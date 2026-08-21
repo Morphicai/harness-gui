@@ -148,4 +148,17 @@ jobs:
             - name: Collect
               shell: bash
               run: |
-                  find native-client/zig-out -name '*.exe' -print
+                  EXE=$(find native-client/zig-out -name 'native-client.exe' | head -1)
+                  test -n "$EXE" || { echo "::warning::没找到 .exe"; exit 1; }
+                  mkdir -p out && cp "$EXE" out/Interact.exe
+                  ls -l out/
+
+            # 上传是为了让 release 流程能取到它。但注意：**只验证了「编得出来」**，
+            # 没有任何人验证过它跑起来是什么样 —— Windows 上 daemon 走命名管道、
+            # 壳要 WebView2，两样都还没在真实环境里试过。
+            # 所以 continue-on-error 先留着，等有人真的在 Windows 上跑通一次交互再摘。
+            - uses: actions/upload-artifact@v4
+              with:
+                  name: shell-win32-x64
+                  path: out/Interact.exe
+                  if-no-files-found: error

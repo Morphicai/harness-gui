@@ -29,8 +29,19 @@ concurrency:
     cancel-in-progress: false
 
 jobs:
+    # 先出壳产物。壳只在真要发布时才用得上，所以它不挂在每次 push 的 CI 上；
+    # 这里用 workflow_call 复用同一份配方（.github/workflows/shells.yml），
+    # 免得两处各写一遍 zig 版本和校验和。
+    #
+    # 它**总是**跑，哪怕这次只是开 version PR —— 判断「是不是发布模式」要等
+    # changesets/action 跑完，那时再构建就多一次串行等待；而壳构建失败时
+    # 我们本来也不该发布。
+    shells:
+        uses: ./.github/workflows/shells.yml
+
     release:
         name: Version PR / Publish
+        needs: shells
         runs-on: ubuntu-latest
         timeout-minutes: 20
         steps:
@@ -63,6 +74,35 @@ jobs:
 
             - name: Test
               run: npm test
+
+            # artifact 里是 .app 的**内容**（upload-artifact 会把 path 指向的目录
+            # 展平），所以要落进一个名叫 Interact.app 的目录里 ——
+            # shells/*/package.json 的 files 就写着这个名字。
+            - name: Collect native shells
+              uses: actions/download-artifact@v4
+              with:
+                  pattern: shell-*
+                  path: /tmp/shells
+
+            - name: Place shells
+              run: |
+                  set -euo pipefail
+                  shopt -s nullglob
+                  for a in /tmp/shells/shell-*; do
+                      t="${a##*/shell-}"
+                      test -d "shells/$t" || { echo "::warning::没有 shells/$t 这个包，跳过"; continue; }
+                      case "$t" in
+                        win32-*) dest="shells/$t/Interact.exe" ;;
+                        *)       dest="shells/$t/Interact.app" ;;
+                      esac
+                      mkdir -p "$dest" && cp -R "$a/." "$dest/"
+                      echo "  → $dest"
+                  done
+                  # 缺产物只在这里提示；真正的拦截在 release-publish.sh 里统一做 ——
+                  # npm pack 对不存在的 files 条目是静默跳过的，会发出一个空壳包而无人察觉
+                  for d in shells/*/; do
+                      ls "$d" | grep -qE 'Interact\.(app|exe)' || echo "::warning::$d 还没有产物"
+                  done
 
             # 这一步开出的 "version packages" PR 是由 GITHUB_TOKEN 创建的，
             # GitHub 的防递归规则会让它上面的 CI 停在 action_required（需人工点一下）。
