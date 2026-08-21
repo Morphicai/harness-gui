@@ -813,16 +813,16 @@ fn parseWebLayer(value: []const u8) ?WebLayerOption {
 /// 找不到就返回相对路径，让后续步骤报出「路径不存在」——比默默用一个别人机器上的
 /// 绝对路径去构建要好，那种失败看不出原因。
 fn resolveNativeSdkPath(b: *std.Build) []const u8 {
-    if (std.process.getEnvVarOwned(b.allocator, "NATIVE_SDK_PATH")) |v| {
-        return v;
-    } else |_| {}
+    // build 脚本里读环境变量走 b.graph.environ_map —— std.process 在 0.16 里没有
+    // getEnvVarOwned 了，而 Build.zig 自己读 DESTDIR / PATH 用的就是这个 map。
+    if (b.graph.environ_map.get("NATIVE_SDK_PATH")) |v| return v;
 
-    const home = std.process.getEnvVarOwned(b.allocator, "HOME") catch return default_native_sdk_rel;
+    const home = b.graph.environ_map.get("HOME") orelse return default_native_sdk_rel;
     const candidates = [_][]const u8{ ".local", ".npm-global", ".volta/tools/image/npm" };
     for (candidates) |prefix| {
         const p = std.fs.path.join(b.allocator, &.{ home, prefix, default_native_sdk_rel }) catch continue;
-        var dir = std.fs.openDirAbsolute(p, .{}) catch continue;
-        dir.close();
+        // 0.16 的文件系统调用都要显式带 Io
+        std.Io.Dir.accessAbsolute(b.graph.io, p, .{}) catch continue;
         return p;
     }
     return default_native_sdk_rel;
