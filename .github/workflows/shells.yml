@@ -21,6 +21,13 @@ on:
 permissions:
     contents: read
 
+env:
+    # 与 native-client/build.zig.zon 的 minimum_zig_version 对齐。
+    # 校验和来自 https://ziglang.org/download/index.json，换版本要一起更新。
+    ZIG_VERSION: 0.16.0
+    ZIG_SHA256_AARCH64_MACOS: b23d70deaa879b5c2d486ed3316f7eaa53e84acf6fc9cc747de152450d401489
+    ZIG_SHA256_X86_64_WINDOWS: 68659eb5f1e4eb1437a722f1dd889c5a322c9954607f5edcf337bc3684a75a7e
+
 jobs:
     darwin:
         # 两个 darwin 架构在**同一台 runner** 上出：zig 交叉编译，sysroot 由
@@ -44,27 +51,41 @@ jobs:
               with:
                   node-version: '22'
 
-            # zig **不用单独装** —— @native-sdk/cli 自带
-            # ~/.native/toolchains/zig-0.16.0/zig。先装 SDK 就够了。
-            - name: Install Native SDK (brings its own zig)
-              run: npm i -g @native-sdk/cli
+            # zig 从 ziglang.org 直接下、版本钉死并校验 shasum。
+            #
+            # **不要指望 `npm i -g @native-sdk/cli` 会带来 zig**：那个 CLI 只是个
+            # dispatcher，工具链是它在某次运行时按需下载到 ~/.native/toolchains/ 的。
+            # 开发机上碰巧有，全新 runner 上没有 —— 第一次跑这条流水线就栽在这儿。
+            # 显式下载还有个好处：不依赖 CLI 的内部布局，它变了也不影响这里。
+            - name: Install zig ${{ env.ZIG_VERSION }}
+              run: |
+                  case "${{ matrix.target }}" in
+                    aarch64-macos) HOST=aarch64-macos ;;
+                    x86_64-macos)  HOST=aarch64-macos ;;   # runner 是 arm64，交叉编译到 x64
+                  esac
+                  DIR="zig-$HOST-$ZIG_VERSION"
+                  curl -sSL "https://ziglang.org/download/$ZIG_VERSION/$DIR.tar.xz" -o /tmp/zig.tar.xz
+                  echo "$ZIG_SHA256_AARCH64_MACOS  /tmp/zig.tar.xz" | shasum -a 256 -c - \
+                    || { echo "::error::zig 压缩包校验失败 —— 下载被篡改或版本索引变了"; exit 1; }
+                  tar -xJf /tmp/zig.tar.xz -C "$HOME"
+                  echo "zig=$HOME/$DIR/zig" >> "$GITHUB_OUTPUT"
+              id: zig
 
-            - name: Locate toolchain
+            # 框架仍然来自 npm（公开包），只是不再指望它捎带 zig
+            - name: Install Native SDK framework
               id: tc
               run: |
-                  ZIG="$HOME/.native/toolchains/zig-0.16.0/zig"
-                  test -x "$ZIG" || { echo "::error::zig 不在预期位置 $ZIG —— @native-sdk/cli 的布局变了，读 docs/building-the-shell.md"; exit 1; }
-                  echo "zig=$ZIG" >> "$GITHUB_OUTPUT"
-                  "$ZIG" version
+                  npm i -g @native-sdk/cli
                   # build.zig 按 $HOME/{.local,.npm-global,...}/lib/node_modules/@native-sdk/cli 找；
                   # runner 上 npm 全局前缀不一定是那几个，所以显式给
                   SDK="$(npm root -g)/@native-sdk/cli"
                   test -f "$SDK/build.zig" || { echo "::error::Native SDK 不在 $SDK"; exit 1; }
                   echo "sdk=$SDK" >> "$GITHUB_OUTPUT"
+                  "${{ steps.zig.outputs.zig }}" version
 
             - name: Build (unsigned)
               env:
-                  ZIG: ${{ steps.tc.outputs.zig }}
+                  ZIG: ${{ steps.zig.outputs.zig }}
                   NATIVE_SDK_PATH: ${{ steps.tc.outputs.sdk }}
                   # 暂不签名。签名要 Developer ID，公证还会把二进制上传给 Apple ——
                   # 那是外发行为，必须显式开启，不能因为 secret 刚好齐了就自动做。
@@ -111,12 +132,18 @@ jobs:
               with:
                   node-version: '22'
             - run: npm i -g @native-sdk/cli
-            - name: Build
+            - name: Install zig + build
               shell: bash
               run: |
-                  ZIG="$HOME/.native/toolchains/zig-0.16.0/zig"
-                  test -x "$ZIG" || ZIG="$HOME/.native/toolchains/zig-0.16.0/zig.exe"
-                  test -x "$ZIG" || { echo "::warning::zig 不在预期位置，Windows 配方还没验过"; exit 1; }
+                  DIR="zig-x86_64-windows-$ZIG_VERSION"
+                  curl -sSL "https://ziglang.org/download/$ZIG_VERSION/$DIR.zip" -o /tmp/zig.zip
+                  echo "$ZIG_SHA256_X86_64_WINDOWS  /tmp/zig.zip" | sha256sum -c - \
+                    || { echo "::warning::zig 压缩包校验失败"; exit 1; }
+                  unzip -q /tmp/zig.zip -d "$HOME"
+                  ZIG="$HOME/$DIR/zig.exe"
+                  test -x "$ZIG" || { echo "::warning::zig 没就位，Windows 配方还没验过"; exit 1; }
+                  "$ZIG" version
+                  export NATIVE_SDK_PATH="$(npm root -g)/@native-sdk/cli"
                   cd native-client && "$ZIG" build -Doptimize=ReleaseFast
             - name: Collect
               shell: bash

@@ -7,10 +7,19 @@
 
 | | 从哪来 | 备注 |
 |---|---|---|
-| zig 0.16.0 | **`@native-sdk/cli` 自带**：`~/.native/toolchains/zig-0.16.0/zig` | 不必单独装。`build.zig.zon` 要求 `minimum_zig_version = "0.16.0"` |
+| zig 0.16.0 | 开发机上 `@native-sdk/cli` **可能**已经放了一份在 `~/.native/toolchains/zig-0.16.0/zig`；**CI 里必须自己下** | 见下方警告。`build.zig.zon` 要求 `minimum_zig_version = "0.16.0"` |
 | Native SDK | `npm i -g @native-sdk/cli`（**公开 npm**） | `build.zig` 按 `$HOME/{.local,.npm-global,.volta/tools/image/npm}/lib/node_modules/@native-sdk/cli` 找，或用 `NATIVE_SDK_PATH` 显式指定 |
 
 npm 全局前缀若不是 `~/.local`，装完要么设 `NATIVE_SDK_PATH`，要么确认落在上面三个候选之一。
+
+> **别指望 `npm i -g @native-sdk/cli` 会带来 zig。** 那个包只是个 dispatcher，
+> 工具链是它在**某次运行时**按需下载到 `~/.native/toolchains/` 的。开发机上碰巧有，
+> 全新 runner 上没有 —— 壳构建流水线第一次跑就栽在这儿（`zig 不在预期位置`）。
+>
+> CI 里从 ziglang.org 直接下并校验 sha256（见 `.github/workflows/shells.yml` 顶部的
+> `ZIG_VERSION` / `ZIG_SHA256_*`）。除了确定性，这样也不依赖 CLI 的内部布局。
+> 校验和取自 https://ziglang.org/download/index.json 的 `shasum` 字段（就是 sha256），
+> 换版本要一起更新。
 
 ## 构建
 
