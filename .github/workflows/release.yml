@@ -61,7 +61,16 @@ jobs:
             - name: Upgrade npm for OIDC trusted publishing
               run: npm install -g npm@11 && npm --version
 
-            - run: npm ci
+            # 发布这一跑刻意用 install 而不是 ci。
+            #
+            # core 的 optionalDependencies 把壳包钉在与自己**完全相等**的版本上，
+            # 而那个版本的壳恰恰要靠这一跑才会出现在 registry 上。npm 10 对解析不到的
+            # optional 依赖是静默跳过，npm 11 的 `npm ci` 直接判 "Missing ... from lock
+            # file" 拒绝安装 —— 于是升到 npm 11 之后，发布永远死在第一步，壳永远发不出去
+            # （0.4.0 就是这么卡住的：version PR 合了，包一个都没发）。
+            #
+            # lockfile 漂移的把关不在这里，在 ci.yml —— 那边每次 push 都跑 npm ci。
+            - run: npm install --no-audit --no-fund
 
             - name: Verify dependency signatures
               run: npm audit signatures || echo "::warning::audit signatures reported issues"
