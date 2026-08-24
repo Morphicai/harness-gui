@@ -1,6 +1,6 @@
 {
   "name": "harness-gui",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "A bridge between your program and a human — notify, show, confirm, select, form. Terminal, browser, or a native window.",
   "license": "MIT",
   "type": "commonjs",
@@ -36,8 +36,8 @@
     "node": ">=18"
   },
   "optionalDependencies": {
-    "@harness-gui/shell-darwin-arm64": "0.4.0",
-    "@harness-gui/shell-darwin-x64": "0.4.0",
-    "@harness-gui/shell-win32-x64": "0.4.0"
+    "@harness-gui/shell-darwin-arm64": "0.4.1",
+    "@harness-gui/shell-darwin-x64": "0.4.1",
+    "@harness-gui/shell-win32-x64": "0.4.1"
   }
 }
