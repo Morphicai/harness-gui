@@ -1,5 +1,12 @@
 # @harness-gui/mcp
 
+## 0.2.3
+
+### Patch Changes
+
+- Updated dependencies [79efee5]
+  - harness-gui@0.4.1
+
 ## 0.2.2
 
 ### Patch Changes
